@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+New
+- Ambient occlusion is ground truth AO (GTAO): tighter contact shadows, and much faster on
+  heavy models, with a half-resolution blur and a depth-aware upsample.
+- *While navigating* can *Reduce ambient occlusion*: a cheaper level while the view moves.
+  Older documents get the new choice when they are opened.
+- An ambient occlusion option, in the scene settings: *Refine over frames* (`AOTemporal`).
+  It needs the optional package PyOpenGL; without it the option is greyed out, and it
+  starts off.
+
+Fixed
+- The automatic AO radius and the scene's mirror groups are kept until the model changes,
+  instead of being measured at every poll: large models no longer stall.
+
 ## ShowRoom 1.0.1
 
 Fixed

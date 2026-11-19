@@ -152,6 +152,12 @@ makes shapes much easier to read.
 | `AOIntensity` | strength of the darkening |
 | `AORadius` | distance within which surfaces occlude each other; 0 = automatic (6 % of the size of the scene) |
 | `AOQuality` | Low / Medium / High: samples per pixel and resolution (new scenes: High) |
+| `AOTemporal` | refine over several frames: smoother, and keeps improving while the view is still |
+
+`AOTemporal` needs the optional Python package
+[PyOpenGL](https://pypi.org/project/PyOpenGL/) (with numpy). The Addon Manager offers it
+when ShowRoom is installed or updated; without it the option is greyed out and the effect
+runs without it.
 
 ### Appearance and textures
 
@@ -200,7 +206,7 @@ it stops. Editing the model or dragging a light is not navigation: shadows stay 
 
 | Property (scene configuration) | Meaning |
 | --- | --- |
-| `WhileNavigating` | *Pause all effects* (default), *Pause ambient occlusion* (shadows stay), *Keep effects* |
+| `WhileNavigating` | *Pause all effects* (default), *Pause ambient occlusion* (shadows stay), *Reduce ambient occlusion* (a cheaper level while moving), *Keep effects* |
 | `NavigationResumeDelay` | milliseconds the view has to stay still before the effects return (250) |
 
 Good to know about shadows and ambient occlusion:

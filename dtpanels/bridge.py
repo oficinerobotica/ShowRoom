@@ -114,7 +114,8 @@ def _public(p):
                unit=p.get("unit", ""), tip=p.get("tip", ""), decimals=int(p.get("decimals", 2)),
                options=list(p.get("options", [])), special=p.get("special", ""),
                presets=list(p.get("presets", [])), browseLabel=p.get("browseLabel", "Browse…"),
-               shadowLabel=p.get("shadowLabel", "Shadows"))
+               shadowLabel=p.get("shadowLabel", "Shadows"),
+               disabled=bool(p.get("disabled", False)))
     out["optionLabels"] = list(p.get("optionLabels", out["options"]))
     return out
 
@@ -413,6 +414,7 @@ class _WidgetForm(QtWidgets.QWidget):
             for p in sec["params"]:
                 w = self._editor(p)
                 w.setToolTip(p["tip"])
+                w.setEnabled(not p["disabled"])
                 self.editors[p["name"]] = (p, w)
                 if p["kind"] in ("note", "light", "gallery"):
                     form.addRow(w)

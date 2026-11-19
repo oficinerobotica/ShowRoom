@@ -17,12 +17,14 @@ other CAD programs).
 """
 from pivy import coin
 
+from SceneFX import ambient_occlusion
 from Utils import view_utils
 
 MODE_FULL = 'Keep effects'
 MODE_NO_AO = 'Pause ambient occlusion'
 MODE_NONE = 'Pause all effects'
-MODES = [MODE_FULL, MODE_NO_AO, MODE_NONE]
+MODE_REDUCE_AO = 'Reduce ambient occlusion'
+MODES = [MODE_FULL, MODE_REDUCE_AO, MODE_NO_AO, MODE_NONE]
 DEFAULT_MODE = MODE_NONE
 DEFAULT_DELAY_MS = 250
 
@@ -103,12 +105,24 @@ class _ViewState:
             wanted = coin.SO_SWITCH_ALL if ao_on else coin.SO_SWITCH_NONE
             if self.ao_switch.whichChild.getValue() != wanted:
                 self.ao_switch.whichChild.setValue(wanted)
+            self._apply_ao_level()
         if self.shadow_group is not None:
             field = self.shadow_group.getField('isActive')
             if field is not None:
                 field = coin.cast(field, 'SoSFBool')
                 if bool(field.getValue()) != shadows_on:
                     field.setValue(shadows_on)
+
+    def _apply_ao_level(self) -> None:
+        """Show the cheap AO pipeline while the camera moves."""
+        lod = view_utils.find_child(self.ao_switch,
+                                    ambient_occlusion.LOD_SWITCH_NAME)
+        if lod is None:
+            return
+        reduced = self.paused and self.mode == MODE_REDUCE_AO
+        level = 1 if reduced else 0
+        if lod.whichChild.getValue() != level:
+            lod.whichChild.setValue(level)
 
     def set_nodes(self, ao_switch, shadow_group):
         """Remember the effect nodes, keeping them alive for as long as we do.

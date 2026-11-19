@@ -21,11 +21,14 @@ What it maintains in every view (FreeCAD 26.3 layout):
      |         +- view providers ...
      +- [ambient occlusion pass]     <- only while ambient occlusion is on
 """
+from typing import Any
+
 import FreeCAD
 from pivy import coin
 
 from Utils import view_utils
 from SceneFX import shadows, ambient_occlusion, navigation, shadow_catcher
+from SceneFX import gl_util
 
 LIGHTS_NAME = 'DisplayToolsLights'
 MAX_GL_LIGHTS = 8          # fixed-function OpenGL limit, FreeCAD's own lights included
@@ -59,6 +62,7 @@ class Settings:
         radius = getattr(cfg, 'AORadius', 0.0)
         self.ao_radius = float(getattr(radius, 'Value', radius))
         self.ao_quality = str(getattr(cfg, 'AOQuality', 'High'))
+        self.ao_temporal = bool(getattr(cfg, 'AOTemporal', False))
         self.catcher = bool(getattr(cfg, 'ShadowCatcher', False))
         self.navigation_mode = str(getattr(cfg, 'WhileNavigating', navigation.DEFAULT_MODE))
         self.navigation_delay = int(getattr(cfg, 'NavigationResumeDelay',
@@ -95,13 +99,21 @@ class _Mirrors:
         self.caster_scene.ref()
 
 
-def mirrors_of(doc, view):
-    """The mirror groups of ``doc``, brought up to date from ``view``."""
+def mirrors_of(doc: Any, view: Any, refresh: bool = True) -> '_Mirrors':
+    """The mirror groups of ``doc``, brought up to date from ``view``.
+
+    Refreshing walks every view provider through pivy (on a large model,
+    ~150 ms): the poll asks for it only when the groups are new.
+    """
     mirrors = _mirrors.get(doc.Name)
     if mirrors is None:
         mirrors = _mirrors[doc.Name] = _Mirrors()
-    view_utils.set_children(mirrors.ao, view_utils.geometry_nodes(view, doc, skip=('light',)))
-    view_utils.set_children(mirrors.casters, view_utils.geometry_nodes(view, doc))
+        refresh = True
+    if refresh:
+        view_utils.set_children(mirrors.ao, view_utils.geometry_nodes(
+            view, doc, skip=('light',)))
+        view_utils.set_children(mirrors.casters,
+                                view_utils.geometry_nodes(view, doc))
     return mirrors
 
 
@@ -205,7 +217,19 @@ def _sync_shadows(parts, settings, nodes, mirrors, doc):
 
 
 # ---------------------------------------------------------- ambient occlusion
-def _auto_ao_radius(view, doc):
+# The automatic radius walks the bounding box of the whole model: far too
+# slow for the 400 ms poll on a large one.  Kept per document until the
+# model changes.
+_auto_radii: dict[str, float] = {}
+
+
+def _auto_ao_radius(view: Any, doc: Any) -> float:
+    if doc.Name not in _auto_radii:
+        _auto_radii[doc.Name] = _measure_ao_radius(view, doc)
+    return _auto_radii[doc.Name]
+
+
+def _measure_ao_radius(view: Any, doc: Any) -> float:
     box = view_utils.scene_bound_box(view, doc)
     if box is None:
         return 0.0
@@ -215,6 +239,34 @@ def _auto_ao_radius(view, doc):
         return 0.0
     # two significant digits: small model edits must not rebuild the effect
     return float('%.1e' % radius)
+
+
+def _drop_ao(outer: Any, existing: Any, view: Any) -> None:
+    """Take the effect out of ``view``, freeing its GPU memory now."""
+    ambient_occlusion.release(existing)
+    outer.removeChild(existing)
+    _free_gl_now(view)
+
+
+def _free_gl_now(view: Any) -> None:
+    """Delete released GL objects in ``view``'s context, outside a frame.
+
+    Where the view's GL widget cannot be had, they go at its next frame
+    that runs an effect helper.
+    """
+    if gl_util.missing_dependency() is not None:
+        return          # without PyOpenGL no GL objects were made
+    try:
+        widget = view.graphicsView().viewport()
+        widget.makeCurrent()
+    except Exception:
+        return
+    try:
+        gl_util.collect(gl_util.load())
+    except Exception:
+        pass
+    finally:
+        widget.doneCurrent()
 
 
 def _sync_ao(parts, settings, doc, mirrors):
@@ -233,7 +285,7 @@ def _sync_ao(parts, settings, doc, mirrors):
         wanted = radius > 0 and camera is not None and settings.ao_intensity > 0
     if not wanted:
         if existing is not None:
-            outer.removeChild(existing)
+            _drop_ao(outer, existing, parts.view)
         return
 
     width, height = view_utils.viewport_size(parts.view)
@@ -242,13 +294,15 @@ def _sync_ao(parts, settings, doc, mirrors):
     shrink = min(1.0, float(ambient_occlusion.MAX_TEXTURE) / max(width, height))
     wanted_signature = ambient_occlusion.signature(
         max(int(width * shrink), 8), max(int(height * shrink), 8), camera, mirrors.ao,
-        radius, settings.ao_intensity, settings.ao_quality)
+        radius, settings.ao_intensity, settings.ao_quality,
+        settings.ao_temporal)
     if existing is not None:
         if ambient_occlusion.current_signature(existing) == wanted_signature:
             return
-        outer.removeChild(existing)
-    outer.addChild(ambient_occlusion.build(width, height, camera, mirrors.ao, radius,
-                                           settings.ao_intensity, settings.ao_quality))
+        _drop_ao(outer, existing, parts.view)
+    outer.addChild(ambient_occlusion.build(
+        width, height, camera, mirrors.ao, radius, settings.ao_intensity,
+        settings.ao_quality, settings.ao_temporal))
 
 
 # ------------------------------------------------------------- shadow catcher
@@ -386,6 +440,7 @@ def sync_document(doc):
     """Bring every 3D view of ``doc`` in line with its lights and effect settings."""
     if not FreeCAD.GuiUp or doc is None:
         return
+    _auto_radii.pop(doc.Name, None)
     try:
         settings = Settings(doc)
         lights = document_lights(doc)
@@ -474,6 +529,7 @@ class _DocumentObserver:
         if prop in ('Shape', 'Placement', 'Visibility', 'Mesh', 'Points'):
             try:
                 doc = obj.Document
+                _auto_radii.pop(doc.Name, None)
                 settings = Settings(doc)
                 if settings.shadows or settings.catcher:
                     schedule_sync(doc)
@@ -561,7 +617,9 @@ def _watch():
             settings = Settings(doc)
             for view in view_utils.views_of(doc):
                 if settings.ao:
-                    _sync_ao(view_utils.SceneParts(view), settings, doc, mirrors_of(doc, view))
+                    mirrors = mirrors_of(doc, view, refresh=False)
+                    _sync_ao(view_utils.SceneParts(view), settings, doc,
+                             mirrors)
                 _sync_navigation(view, settings)
         except Exception:
             pass

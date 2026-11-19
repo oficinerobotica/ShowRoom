@@ -14,9 +14,31 @@ AO_QUALITIES = ['Low', 'Medium', 'High']
 UNIT_LIMITS = (0.0, 1.0, 0.05)
 AO_INTENSITY_LIMITS = (0.0, 4.0, 0.1)
 
+#: ambient occlusion options that need PyOpenGL: (property, tip)
+AO_TOGGLES = (
+    ('AOTemporal', 'Accumulate ambient occlusion over frames: smoother, and '
+                   'it keeps refining while the view is still. Needs PyOpenGL'),
+)
+#: properties of earlier versions, dropped when a document is opened
+RETIRED_PROPERTIES = ('AODepthReuse',)
+
 EFFECT_PROPERTIES = ('Shadows', 'ShadowDarkness', 'ShadowSoftness', 'ShadowQuality',
                      'AmbientOcclusion', 'AOIntensity', 'AORadius', 'AOQuality',
+                     'AOTemporal',
                      'WhileNavigating', 'NavigationResumeDelay', 'ShadowCatcher')
+
+
+def _enumeration(obj, name, values):
+    """Give an enumeration saved by an older version today's values."""
+    try:
+        if list(obj.getEnumerationsOfProperty(name)) == list(values):
+            return
+        chosen = getattr(obj, name)
+        setattr(obj, name, list(values))
+        if chosen in values:
+            setattr(obj, name, chosen)
+    except Exception:
+        pass
 
 
 def _constraint(obj, name, limits):
@@ -76,6 +98,16 @@ class CreateSceneConfig(object):
                             "Number of samples and resolution of the effect")
             obj.AOQuality = AO_QUALITIES
             obj.AOQuality = 'High'
+        missing = [name for name, _tip in AO_TOGGLES if name not in pl]
+        if missing:
+            # on where they can run: no warnings for what was never asked
+            from SceneFX import gl_util
+            default = gl_util.missing_dependency() is None
+            for name, tip in AO_TOGGLES:
+                if name in missing:
+                    obj.addProperty("App::PropertyBool", name,
+                                    "Ambient Occlusion", tip)
+                    setattr(obj, name, default)
         if 'WhileNavigating' not in pl:
             from SceneFX import navigation
             obj.addProperty("App::PropertyEnumeration", "WhileNavigating", "Performance",
@@ -89,7 +121,12 @@ class CreateSceneConfig(object):
                             "come back").NavigationResumeDelay = (250, 0, 5000, 50)
 
     def onDocumentRestored(self, obj):
+        for name in RETIRED_PROPERTIES:
+            if name in obj.PropertiesList:
+                obj.removeProperty(name)
         self.setProperties(obj)
+        from SceneFX import navigation
+        _enumeration(obj, 'WhileNavigating', navigation.MODES)
         _constraint(obj, 'ShadowDarkness', UNIT_LIMITS)
         _constraint(obj, 'ShadowSoftness', UNIT_LIMITS)
         _constraint(obj, 'AOIntensity', AO_INTENSITY_LIMITS)

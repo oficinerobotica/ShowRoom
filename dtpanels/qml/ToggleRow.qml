@@ -7,6 +7,10 @@ Item {
     property var p
     property var th
     property bool value: bridge.values[p.name] === true
+    // greyed out: an option this system cannot run
+    readonly property bool disabled: p.disabled === true
+    readonly property real disabledOpacity: 0.4
+    opacity: disabled ? disabledOpacity : 1.0
     implicitHeight: Math.round(34 * th.s)
     width: parent ? parent.width : 0
 
@@ -33,6 +37,10 @@ Item {
             color: "white"
             Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
         }
-        MouseArea { anchors.fill: parent; anchors.margins: -4; onClicked: bridge.setValue(p.name, !row.value) }
+        MouseArea {
+            anchors.fill: parent; anchors.margins: -4
+            enabled: !row.disabled
+            onClicked: bridge.setValue(p.name, !row.value)
+        }
     }
 }

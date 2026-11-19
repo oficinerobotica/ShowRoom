@@ -15,8 +15,22 @@ LIGHT_COLORS = ['#ffffff', '#fff2dc', '#ffe0b3', '#dce8ff', '#ffd2a6']
 GRID_COLORS = ['#808080', '#b0b0b0', '#5a5a5a', '#3d7bd6']
 GROUND_COLORS = ['#d9d9d9', '#f2f2f2', '#9a9a9a', '#e8e0d0']
 
+#: the note under the ambient occlusion options that need PyOpenGL
+AO_NOTE = 'aoNeedsPyOpenGL'
+
 
 # ------------------------------------------------------------------------------ helpers
+def _navigation_labels(cfg):
+    """Short labels of the navigation modes, in the panel's choice row."""
+    from SceneFX import navigation
+    short = {navigation.MODE_FULL: 'Keep',
+             navigation.MODE_REDUCE_AO: 'Reduce AO',
+             navigation.MODE_NO_AO: 'Pause AO',
+             navigation.MODE_NONE: 'Pause all'}
+    return [short.get(mode, mode)
+            for mode in cfg.getEnumerationsOfProperty('WhileNavigating')]
+
+
 def num(obj, name):
     value = getattr(obj, name)
     return float(getattr(value, 'Value', value))
@@ -212,6 +226,7 @@ class EffectsModel(Model):
                  max=nice(max(size, 1.0) * 0.25), step=nice(max(size, 1.0) * 0.25) / 100,
                  unit='mm', special='Auto', hardMin=0),
             prop(c, 'AOQuality', 'Quality', 'enum', 'Ambient occlusion'),
+            *self._ao_toggles(),
         ]
         lights = lights_of(self.doc)
         if lights:
@@ -222,13 +237,26 @@ class EffectsModel(Model):
                             'single light from the toolbar.', 'note', 'Lights', None, None))
         ps += [
             prop(c, 'WhileNavigating', 'While navigating', 'enum', 'Performance and turntable',
-                 optionLabels=['Keep', 'Pause AO', 'Pause all']),
+                 optionLabels=_navigation_labels(c)),
             prop(c, 'NavigationResumeDelay', 'Resume after', 'number', 'Performance and turntable',
                  min=0, max=2000, step=50, unit='ms', decimals=0, cast='int', hardMin=0, hardMax=5000),
             prop(c, 'TurntablePeriod', 'One turn in', 'number', 'Performance and turntable',
                  min=-60, max=60, step=1, unit='s', decimals=0),
         ]
         return ps
+
+    def _ao_toggles(self):
+        """The option that needs PyOpenGL: greyed out, with a note, without."""
+        c = self.cfg
+        from SceneFX import gl_util
+        usable = gl_util.missing_dependency() is None
+        rows = [prop(c, 'AOTemporal', 'Refine over frames', 'bool',
+                     'Ambient occlusion', disabled=not usable)]
+        if not usable:
+            rows.append(param(AO_NOTE, 'This needs the Python package '
+                              'PyOpenGL.', 'note', 'Ambient occlusion',
+                              None, None))
+        return rows
 
     def _light_row(self, light):
         def get():
@@ -252,7 +280,8 @@ class EffectsModel(Model):
         if not (c.Shadows or c.ShadowCatcher):
             out += ['ShadowDarkness', 'ShadowSoftness', 'ShadowQuality']
         if not c.AmbientOcclusion:
-            out += ['AOIntensity', 'AORadius', 'AOQuality']
+            out += ['AOIntensity', 'AORadius', 'AOQuality', 'AOTemporal',
+                    AO_NOTE]
         return out
 
     def info(self):
