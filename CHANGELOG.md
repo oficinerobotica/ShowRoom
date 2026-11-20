@@ -1,5 +1,9 @@
 # Changelog
 
+## ShowRoom 1.1.7
+
+- Windows: QML panels were empty ("Failed to get a QRhi"): Qt Quick now draws with OpenGL like the 3D view; where that is not possible the classic widget panels are used.
+
 ## ShowRoom 1.1.6
 
 - Effects pause only for Create sketch's plane choice, attachment panels and sketch editing; Pad, Pocket and other task panels keep them.

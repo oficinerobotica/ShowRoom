@@ -38,6 +38,32 @@ except Exception:                   # pragma: no cover - older Qt bindings
 
 import os
 
+
+_quick_ok = None
+
+
+def quick_usable():
+    """Qt Quick must draw with the same graphics API as FreeCAD's window (OpenGL).
+    On Windows Qt 6 defaults to Direct3D, and the QML panels stay empty ("Failed
+    to get a QRhi"): ask for OpenGL before the first QQuickWidget is created.  If
+    that is no longer possible (created earlier by something else), the classic
+    widget panels are used."""
+    global _quick_ok
+    if _quick_ok is None:
+        _quick_ok = QtQuickWidgets is not None
+        if _quick_ok:
+            try:
+                from PySide6.QtQuick import QQuickWindow, QSGRendererInterface
+                api = QSGRendererInterface.GraphicsApi
+                if QQuickWindow.graphicsApi() not in (api.OpenGL, api.OpenGLRhi):
+                    QQuickWindow.setGraphicsApi(api.OpenGL)
+                _quick_ok = QQuickWindow.graphicsApi() in (api.OpenGL, api.OpenGLRhi)
+            except Exception:
+                pass                # PySide2 / Qt 5: always OpenGL
+            if not _quick_ok:
+                App.Console.PrintLog("ShowRoom: Qt Quick cannot use OpenGL here, using widget panels\n")
+    return _quick_ok
+
 PREFS = "User parameter:BaseApp/Preferences/Mod/ShowRoom"
 _new = set()
 
@@ -324,7 +350,7 @@ class _DocObserver:
 
 # ------------------------------------------------------------------------------ QML form
 def _qml_widget(bridge):
-    if QtQuickWidgets is None or not App.ParamGet(PREFS).GetBool("UseQml", True):
+    if not App.ParamGet(PREFS).GetBool("UseQml", True) or not quick_usable():
         return None
     try:
         view = QtQuickWidgets.QQuickWidget()

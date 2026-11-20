@@ -22,7 +22,7 @@ import FreeCADGui as Gui
 from PySide import QtCore
 
 from dtpanels import QML, models
-from dtpanels.bridge import Bridge, PREFS, QtQuickWidgets, edit
+from dtpanels.bridge import Bridge, PREFS, QtQuickWidgets, edit, quick_usable
 
 WIDTH = 330
 TOP = 150           # below the navigation cube
@@ -180,7 +180,7 @@ class _Manager:
 
     # ---------------------------------------------------------------- show/hide
     def enabled(self):
-        return QtQuickWidgets is not None and App.ParamGet(PREFS).GetBool("InViewPanel", True)
+        return App.ParamGet(PREFS).GetBool("InViewPanel", True) and quick_usable()
 
     def selection_changed(self):
         if not self.enabled():

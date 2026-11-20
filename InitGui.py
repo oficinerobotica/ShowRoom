@@ -106,6 +106,11 @@ def _startServices():
     """Textures, the floating light panel and the scene of new documents (once).
     Self-contained: FreeCAD runs this file with separate namespaces."""
     import FreeCAD
+    try:                            # before any QQuickWidget exists (Windows: Direct3D by default)
+        from dtpanels import bridge
+        bridge.quick_usable()
+    except Exception:
+        pass
     for module, label in (("SceneFX.textures", "textures"), ("dtpanels.overlay", "in-view light panel"),
                           ("SceneFX.autoscene", "automatic scene")):
         try:
