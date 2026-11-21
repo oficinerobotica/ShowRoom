@@ -50,7 +50,7 @@ Item {
                     width: row.compact ? Math.floor((col.width - Math.round(4 * th.s) * (p.options.length - 1)) / p.options.length) - 1 : lab.implicitWidth + Math.round(16 * th.s)
                     height: Math.round(24 * th.s); radius: Math.round(6 * th.s)
                     color: sel ? th.accent : th.field
-                    Text { id: lab; anchors.centerIn: parent; text: p.optionLabels[index]; color: parent.sel ? th.accentText : th.text; font.pixelSize: Math.round(11 * th.s); font.family: th.family; font.bold: parent.sel }
+                    Text { id: lab; anchors.centerIn: parent; text: (p.optionLabels && p.optionLabels[index] !== undefined) ? p.optionLabels[index] : String(modelData); color: parent.sel ? th.accentText : th.text; font.pixelSize: Math.round(11 * th.s); font.family: th.family; font.bold: parent.sel }
                     MouseArea { anchors.fill: parent; onClicked: { bridge.setValue(p.name, modelData); row.open = false } }
                 }
             }

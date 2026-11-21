@@ -141,7 +141,9 @@ def _public(p):
                options=list(p.get("options", [])), special=p.get("special", ""),
                presets=list(p.get("presets", [])), browseLabel=p.get("browseLabel", "Browse…"),
                shadowLabel=p.get("shadowLabel", "Shadows"))
-    out["optionLabels"] = list(p.get("optionLabels", out["options"]))
+    labels = list(p.get("optionLabels", out["options"]))
+    # an enumeration with more values than labels (a file from an older version)
+    out["optionLabels"] = [labels[i] if i < len(labels) else str(o) for i, o in enumerate(out["options"])]
     return out
 
 
