@@ -313,9 +313,12 @@ class FloatingPanel(QtWidgets.QFrame):
             self.stack.setCurrentWidget(self.props.widget)
             tabs = self._native_tabs(self.props.widget, False)
             if tabs is not None:
-                for i in range(tabs.count()):
-                    if tabs.tabText(i).replace('&', '') == name:
-                        tabs.setCurrentIndex(i)
+                texts = [tabs.tabText(i).replace('&', '').strip().lower() for i in range(tabs.count())]
+                if name.lower() in texts:
+                    tabs.setCurrentIndex(texts.index(name.lower()))
+                elif tabs.count() == 2:
+                    # translated FreeCAD: the property view always has View first, Data second
+                    tabs.setCurrentIndex(0 if name == 'View' else 1)
 
     def clicked_tab(self, name):
         if self.mode() == 'Rolled up' and not self.rolled and name == self.tab:
