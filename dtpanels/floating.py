@@ -211,6 +211,14 @@ class FloatingPanel(QtWidgets.QFrame):
         # group rows: section titles like the QML cards (muted, bold) on the card colour
         self.group_colors = (QtGui.QColor(t['card']), QtGui.QColor(t['muted']))
         self.tint = QtGui.QColor(t['window'])
+        self.task_qss = (
+            'QScrollArea, QScrollArea > QWidget > QWidget, Gui--TaskView--TaskPanel, QSint--ActionPanel,'
+            ' QSint--ActionGroup, Gui--TaskView--TaskBox, Gui--TaskView--TaskEditControl,'
+            ' Gui--TaskView--TaskBox > QWidget { background: transparent; border: none; }'
+            'QDialogButtonBox QPushButton { border: 1px solid %(line)s; border-radius: 7px;'
+            ' padding: 5px 16px; color: %(text)s; background: %(field)s; font-family: "%(family)s"; }'
+            'QDialogButtonBox QPushButton:default { background: %(accent)s; border-color: %(accent)s;'
+            ' color: %(accentText)s; font-weight: bold; }' % t)
         self.border = QtGui.QColor(t['line'])
 
     def adopt(self):
@@ -262,6 +270,10 @@ class FloatingPanel(QtWidgets.QFrame):
                     self._editor_look(b.widget, False)
                 else:
                     b.widget.removeEventFilter(self)
+                    b.widget.setStyleSheet('')
+                    for w in b.widget.findChildren(QtWidgets.QWidget):
+                        if w.metaObject().className() == 'QSint::TaskHeader':
+                            w.show()
                 b.give_back()
         self.props = self.tasks = None
 
@@ -364,9 +376,26 @@ class FloatingPanel(QtWidgets.QFrame):
             self.roll(False)
 
     # -------------------------------------------------------------- polling
+    def _skin_tasks(self):
+        """ShowRoom's own task panels (QML) without FreeCAD's grey header and
+        frames, and with OK / Cancel in the QML style; other tasks untouched."""
+        if self.tasks is None:
+            return
+        try:
+            from dtpanels import bridge
+            own = bool(Gui.Control.activeDialog()) and bridge.current() is not None
+        except Exception:
+            own = False
+        dock = self.tasks.widget
+        dock.setStyleSheet(self.task_qss if own else '')
+        for w in dock.findChildren(QtWidgets.QWidget):
+            if w.metaObject().className() == 'QSint::TaskHeader':
+                w.setVisible(not own)
+
     def _task_shown(self):
         if self.tasks is None:
             return
+        QtCore.QTimer.singleShot(50, self._skin_tasks)
         dock = self.tasks.widget
         if self.stack.indexOf(dock) < 0:        # taken back by FreeCAD's dock manager
             self.stack.addWidget(dock)
@@ -382,6 +411,7 @@ class FloatingPanel(QtWidgets.QFrame):
             self._task_shown()
         if dialog != self.had_dialog:
             self.had_dialog = dialog
+            QtCore.QTimer.singleShot(50, self._skin_tasks)
             if prefs.get('AutoTask'):
                 if dialog:
                     self.reveal('Task')
