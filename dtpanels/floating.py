@@ -167,6 +167,8 @@ class FloatingPanel(QtWidgets.QFrame):
 
         self.card = QtWidgets.QFrame(self)
         self.card.setObjectName('SRCard')
+        # its contents' minimum height must not stop the panel from rolling up smoothly
+        self.card.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Ignored)
         cl = QtWidgets.QVBoxLayout(self.card)
         cl.setContentsMargins(4, 4, 4, 4)
         self.stack = QtWidgets.QStackedWidget(self.card)
@@ -180,6 +182,10 @@ class FloatingPanel(QtWidgets.QFrame):
         self.anim = QtCore.QPropertyAnimation(self, b'pos', self)
         self.anim.setDuration(180)
         self.anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        self.roll_anim = QtCore.QPropertyAnimation(self, b'size', self)
+        self.roll_anim.setDuration(450)
+        self.roll_anim.setEasingCurve(QtCore.QEasingCurve.InOutExpo)
+        self.roll_anim.finished.connect(self._rolled_end)
         self.timer = QtCore.QTimer(self)
         self.timer.setInterval(120)
         self.timer.timeout.connect(self._tick)
@@ -336,13 +342,23 @@ class FloatingPanel(QtWidgets.QFrame):
             return
         self.rolled = rolled
         g = self.geometry()
+        lay = self.layout().contentsMargins()
+        short = self.header.sizeHint().height() + lay.top() + lay.bottom()
         if rolled:
-            self._full_height = g.height()
-            self.card.hide()
-            self.resize(g.width(), self.header.sizeHint().height() + 2 * EDGE)
+            if self.roll_anim.state() != QtCore.QAbstractAnimation.Running:
+                self._full_height = g.height()
+            end = short
         else:
             self.card.show()
-            self.resize(g.width(), getattr(self, '_full_height', 420))
+            end = getattr(self, '_full_height', 420)
+        self.roll_anim.stop()
+        self.roll_anim.setStartValue(QtCore.QSize(g.width(), g.height()))
+        self.roll_anim.setEndValue(QtCore.QSize(g.width(), end))
+        self.roll_anim.start()
+
+    def _rolled_end(self):
+        if self.rolled:
+            self.card.hide()
 
     def side(self):
         return 'left' if self.geometry().center().x() < self.host.width() / 2 else 'right'
