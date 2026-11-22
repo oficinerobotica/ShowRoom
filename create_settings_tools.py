@@ -33,9 +33,9 @@ class FloatingPanelCommand:
         return {'MenuText': "Floating properties panel",
                 'ToolTip': "FreeCAD's properties (Data, View) and task panel in a panel "
                            "floating over the 3D view. Click again to put them back",
-                'Pixmap': iconPath('FloatingPanel.svg'), 'Checkable': False}
+                'Pixmap': iconPath('FloatingPanel.svg')}
 
-    def Activated(self):
+    def Activated(self, *args):
         from dtpanels import floating
         floating.toggle()
 
