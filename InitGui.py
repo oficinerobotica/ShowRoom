@@ -112,7 +112,8 @@ def _startServices():
     except Exception:
         pass
     for module, label in (("SceneFX.textures", "textures"), ("dtpanels.overlay", "in-view light panel"),
-                          ("SceneFX.autoscene", "automatic scene")):
+                          ("SceneFX.autoscene", "automatic scene"),
+                          ("dtpanels.floating", "floating properties panel")):
         try:
             __import__(module, fromlist=["install"]).install()
         except Exception as error:

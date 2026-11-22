@@ -357,6 +357,20 @@ def icon_settings():
     return out
 
 
+def icon_panel():
+    out = backdrop(axes=False)
+    out += ['<ellipse cx="54" cy="90" rx="32" ry="6" fill="#000" opacity="0.3" filter="url(#blur)"/>',
+            '<rect x="24" y="14" width="60" height="72" rx="8" fill="#2b3340" stroke="#0e1218" stroke-width="1.6"/>',
+            '<rect x="29" y="19" width="50" height="11" rx="4" fill="url(#sun)"/>',
+            '<rect x="29" y="35" width="50" height="46" rx="4" fill="#dfe6ee"/>']
+    for i in range(5):
+        y = 41 + i * 8
+        out += ['<rect x="33" y="%d" width="16" height="3.5" rx="1.5" fill="#56606e"/>' % y,
+                '<rect x="53" y="%d" width="22" height="3.5" rx="1.5" fill="#8a96a6"/>' % y]
+    out += close_backdrop()
+    return out
+
+
 ICONS = {
     'ShowRoom.svg': icon_showroom,
     'Appearance.svg': icon_appearance,
@@ -371,6 +385,7 @@ ICONS = {
     'SpNav_LockTrans.svg': icon_spnav_trans,
     'SpNav_LockHor.svg': icon_spnav_horizon,
     'Settings.svg': icon_settings,
+    'FloatingPanel.svg': icon_panel,
 }
 
 if __name__ == '__main__':

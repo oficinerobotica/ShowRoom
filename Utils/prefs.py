@@ -30,6 +30,9 @@ DEFAULTS = {
     'InViewPanel': True, 'ShowGizmos': True, 'GizmoSize': 'M', 'SnapTarget': True,
     # panels and textures
     'FontScale': 1.0, 'UseQml': True, 'DefTileSize': 0.0,
+    # floating properties panel
+    'FloatingPanel': False, 'PanelVisibility': 'Fixed', 'PanelBlur': True, 'AutoTask': True,
+    'PanelGeometry': '',
     # maintenance
     'WarnDisplayTools': True,
 }

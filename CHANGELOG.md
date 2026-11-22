@@ -1,5 +1,9 @@
 # Changelog
 
+## ShowRoom 1.2.0
+
+- Floating properties panel: FreeCAD's property editor and task view in a panel over the 3D view, with Data / View / Task tabs, blurred background, resizing and fixed / rolled up / autohide visibility; Autotask opens the Task tab when a task starts.
+
 ## ShowRoom 1.1.7
 
 - Windows: QML panels were empty ("Failed to get a QRhi"): Qt Quick now draws with OpenGL like the 3D view; where that is not possible the classic widget panels are used.

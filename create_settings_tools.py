@@ -25,5 +25,24 @@ class SettingsCommand:
         return True
 
 
+class FloatingPanelCommand:
+    toolbarName = TOOLBAR
+    commandName = 'ShowRoom_FloatingPanel'
+
+    def GetResources(self):
+        return {'MenuText': "Floating properties panel",
+                'ToolTip': "FreeCAD's properties (Data, View) and task panel in a panel "
+                           "floating over the 3D view. Click again to put them back",
+                'Pixmap': iconPath('FloatingPanel.svg'), 'Checkable': False}
+
+    def Activated(self):
+        from dtpanels import floating
+        floating.toggle()
+
+    def IsActive(self):
+        return True
+
+
 import showroom_toolbars     # noqa: E402
 showroom_toolbars.toolbarManager.registerCommand(SettingsCommand())
+showroom_toolbars.toolbarManager.registerCommand(FloatingPanelCommand())

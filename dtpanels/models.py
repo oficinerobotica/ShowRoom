@@ -886,6 +886,16 @@ class SettingsModel(Model):
               decimals=2, hardMin=0.5, hardMax=2, tip='Applies to the panels opened next'),
             P('UseQml', 'QML panels', 'bool', 'Panels',
               tip='Off: classic widget panels, for FreeCAD builds without Qt Quick'),
+            P('FloatingPanel', 'Floating properties panel (Data, View, Task)', 'bool',
+              'Properties panel', tip="Moves FreeCAD's property editor and task view into a "
+              'panel over the 3D view'),
+            P('PanelVisibility', 'Visibility', 'enum', 'Properties panel',
+              options=['Fixed', 'Rolled up', 'Autohide'],
+              tip='Autohide: slides away, comes back when the mouse touches the screen edge '
+                  'on its side, when something is selected or when a task opens'),
+            P('PanelBlur', 'Blurred background', 'bool', 'Properties panel'),
+            P('AutoTask', 'Autotask: show the Task tab when a task opens', 'bool',
+              'Properties panel', tip='Pad, Pocket, sketch editing...'),
             P('DefTileSize', 'Texture tile size (0 = from the object)', 'number', 'Textures',
               min=0, max=200, step=1, unit='mm', decimals=0, hardMin=0),
             P('WarnDisplayTools', 'Warn when Display Tools is installed', 'bool', 'Maintenance'),
@@ -946,6 +956,11 @@ class SettingsModel(Model):
             return
         self._save()
         self.prefs.apply_start_workbench(self.values['StartInShowRoom'])
+        try:
+            from dtpanels import floating
+            floating.apply_prefs()
+        except Exception as error:
+            App.Console.PrintWarning("ShowRoom: floating panel: %s\n" % error)
         if self.values['LoadAtStartup'] or self.values['AutoScene'] or self.values['AutoSceneOnOpen']:
             from SceneFX import autoscene
             autoscene.install()
