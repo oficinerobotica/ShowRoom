@@ -183,19 +183,40 @@ class FloatingPanel(QtWidgets.QFrame):
 
     # -------------------------------------------------------------- set up
     def _style(self):
-        pal = self.host.palette()
+        pal = QtWidgets.QApplication.palette()
         dark = pal.color(QtGui.QPalette.Window).lightness() < 128
         head = 'rgba(255,255,255,18)' if dark else 'rgba(0,0,0,14)'
         card = pal.color(QtGui.QPalette.Base).name()
         accent = pal.color(QtGui.QPalette.Highlight).name()
         text = pal.color(QtGui.QPalette.WindowText).name()
+        base = pal.color(QtGui.QPalette.Base)
+        alt = (base.lighter(108) if dark else base.darker(103)).name()
+        mid = pal.color(QtGui.QPalette.Mid).name()
+        hl = pal.color(QtGui.QPalette.Highlight)
+        k = 0.22 if dark else 0.14         # group rows: the base tinted with the accent colour
+        group_bg = QtGui.QColor(int(base.red() * (1 - k) + hl.red() * k),
+                                int(base.green() * (1 - k) + hl.green() * k),
+                                int(base.blue() * (1 - k) + hl.blue() * k)).name()
         self.setStyleSheet(
             '#SRHeader { background: %s; border-radius: 8px; }'
             '#SRCard { background: %s; border-radius: 8px; }'
             '#SRHeader QPushButton { border: none; border-radius: 6px; padding: 4px 12px; color: %s; background: transparent; }'
             '#SRHeader QPushButton:checked { background: %s; color: white; font-weight: bold; }'
             '#SRHeader QToolButton { border: none; color: %s; padding: 2px 6px; }'
-            % (head, card, text, accent, text))
+            '#SRCard QTreeView { background: transparent; border: none; gridline-color: %s;'
+            ' show-decoration-selected: 1; outline: 0; }'
+            '#SRCard QTreeView::item { min-height: 26px; padding: 0 4px; border: none; }'
+            '#SRCard QTreeView::item:selected { background: %s; color: white; border-radius: 5px; }'
+            '#SRCard QHeaderView::section { background: transparent; border: none; padding: 4px; }'
+            '#SRCard QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }'
+            '#SRCard QScrollBar::handle:vertical { background: %s; border-radius: 3px; min-height: 24px; }'
+            '#SRCard QScrollBar::add-line, #SRCard QScrollBar::sub-line { height: 0; }'
+            '#SRCard QScrollBar::add-page, #SRCard QScrollBar::sub-page { background: none; }'
+            '#SRCard QLineEdit, #SRCard QComboBox, #SRCard QAbstractSpinBox { border: 1px solid %s;'
+            ' border-radius: 5px; padding: 1px 4px; background: %s; }'
+            % (head, card, text, accent, text, alt, accent, mid, mid, card))
+        self.group_colors = (QtGui.QColor(group_bg),
+                             QtGui.QColor(accent).lighter(140) if dark else QtGui.QColor(accent).darker(120))
         self.tint = pal.color(QtGui.QPalette.Window)
 
     def adopt(self):
@@ -206,13 +227,29 @@ class FloatingPanel(QtWidgets.QFrame):
                 self.props = _Borrowed(w)
                 self.stack.addWidget(w)
                 self._native_tabs(w, False)
+                self._editor_look(w, True)
         if self.tasks is None:
             w = _find('Gui::TaskView::TaskView')
             if w is not None:
                 self.tasks = _Borrowed(w)
                 self.stack.addWidget(self.tasks.widget)
+                self.tasks.widget.installEventFilter(self)
         self.show_tab(self.tab)
         return self.props is not None
+
+    def _editor_look(self, view, ours):
+        names = ('groupBackground', 'groupTextColor')
+        for ed in view.findChildren(QtWidgets.QTreeView):
+            if ours:
+                ed._sr_saved = [ed.property(n) for n in names]
+                for n, c in zip(names, self.group_colors):
+                    ed.setProperty(n, QtGui.QBrush(c) if n == 'groupBackground' else c)
+                ed.setIndentation(12)
+            elif hasattr(ed, '_sr_saved'):
+                for n, c in zip(names, ed._sr_saved):
+                    if c is not None:
+                        ed.setProperty(n, c)
+            ed.viewport().update()
 
     def _native_tabs(self, view, visible):
         tabs = view.findChild(QtWidgets.QTabWidget)
@@ -228,6 +265,9 @@ class FloatingPanel(QtWidgets.QFrame):
             if b is not None:
                 if b is self.props:
                     self._native_tabs(b.widget, True)
+                    self._editor_look(b.widget, False)
+                else:
+                    b.widget.removeEventFilter(self)
                 b.give_back()
         self.props = self.tasks = None
 
@@ -330,8 +370,22 @@ class FloatingPanel(QtWidgets.QFrame):
             self.roll(False)
 
     # -------------------------------------------------------------- polling
+    def _task_shown(self):
+        if self.tasks is None:
+            return
+        dock = self.tasks.widget
+        if self.stack.indexOf(dock) < 0:        # taken back by FreeCAD's dock manager
+            self.stack.addWidget(dock)
+        if prefs.get('AutoTask') and Gui.Control.activeDialog():
+            self.had_dialog = True
+            self.reveal('Task')
+        elif self.stack.currentWidget() is not dock:
+            self.show_tab(self.tab)             # keep the current tab on top
+
     def _tick(self):
         dialog = bool(Gui.Control.activeDialog())
+        if self.tasks is not None and self.stack.indexOf(self.tasks.widget) < 0:
+            self._task_shown()
         if dialog != self.had_dialog:
             self.had_dialog = dialog
             if prefs.get('AutoTask'):
@@ -389,6 +443,11 @@ class FloatingPanel(QtWidgets.QFrame):
         self.setGeometry(max(0, min(x, self.host.width() - w)), max(0, min(y, self.host.height() - h)), w, h)
 
     def eventFilter(self, obj, ev):
+        if self.tasks is not None and obj is self.tasks.widget and ev.type() == QtCore.QEvent.Show:
+            # FreeCAD shows its task dock when a dialog opens: switch tab instead
+            if self.stack.currentWidget() is not obj:
+                QtCore.QTimer.singleShot(0, self._task_shown)
+            return False
         if obj is self.host and ev.type() == QtCore.QEvent.Resize and not self.hidden_side:
             g = self.geometry()
             self.move(max(0, min(g.x(), self.host.width() - g.width())),
