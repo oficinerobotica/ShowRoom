@@ -14,8 +14,8 @@ from Utils import prefs
 
 VISIBILITY = ['Fixed', 'Rolled up', 'Autohide']
 EDGE = 6            # resize border, px
-HIDE_DELAY = 700    # ms outside the panel before autohide / roll up
-GRACE = 1500        # ms a panel shown by a selection or a task stays before hiding
+HIDE_DELAY = 1500   # ms outside the panel before autohide / roll up
+GRACE = 3000        # ms a panel shown by a selection or a task stays before hiding
 
 _panel = None
 _observer = None
@@ -402,8 +402,13 @@ class FloatingPanel(QtWidgets.QFrame):
             at_edge = pos.x() <= 3 if self.hidden_side == 'left' else pos.x() >= self.host.width() - 4
             if in_host and at_edge:
                 self.slide(False)
-                self.shown_until = _now() + 400
+                # the panel may sit far from the edge: wait until the mouse gets there
+                self.shown_until = _now() + 6000
+                self.await_enter = True
             return
+        if inside and getattr(self, 'await_enter', False):
+            self.await_enter = False
+            self.shown_until = 0
         if inside or busy:
             self._outside = 0
             return
