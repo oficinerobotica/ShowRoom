@@ -149,35 +149,32 @@ class FloatingPanel(QtWidgets.QFrame):
         lay.setContentsMargins(EDGE + 6, EDGE + 4, EDGE + 6, EDGE + 6)
         lay.setSpacing(EDGE + 2)
         self.header = _Header(self)
-        rows = QtWidgets.QVBoxLayout(self.header)
-        rows.setContentsMargins(6, 4, 6, 2)
-        rows.setSpacing(6)
-        hl = QtWidgets.QHBoxLayout()
+        hl = QtWidgets.QHBoxLayout(self.header)
+        hl.setContentsMargins(6, 4, 6, 4)
         hl.setSpacing(6)
-        rows.addLayout(hl)
+        tabs = QtWidgets.QHBoxLayout()
+        tabs.setSpacing(6)
+        hl.addLayout(tabs, 1)               # ~80 %: Data, View, Task
         self.buttons = {}
         for name in ('Data', 'View', 'Task'):
             b = QtWidgets.QPushButton(name, self.header)
             b.setCheckable(True)
             b.setCursor(QtCore.Qt.PointingHandCursor)
+            b.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
+            b.setMinimumWidth(10)
             b.clicked.connect(lambda _=False, n=name: self.clicked_tab(n))
-            hl.addWidget(b)
+            tabs.addWidget(b)
             self.buttons[name] = b
-        hl.addStretch(1)
-        hl = QtWidgets.QHBoxLayout()        # second row: visibility and pin
-        hl.setSpacing(8)
-        rows.addLayout(hl)
-        self.mode_box = QtWidgets.QComboBox(self.header)
-        self.mode_box.addItems(VISIBILITY)
-        self.mode_box.setToolTip('Visibility of the panel')
-        self.mode_box.activated.connect(lambda i: self.set_mode(VISIBILITY[i]))
-        hl.addWidget(self.mode_box)
-        self.keep_box = QtWidgets.QCheckBox('Pin tasks', self.header)
-        self.keep_box.setToolTip('Keep the panel open while a task is open')
-        self.keep_box.setChecked(prefs.get('KeepOpenOnTask'))
-        self.keep_box.toggled.connect(lambda on: prefs.set('KeepOpenOnTask', on))
-        hl.addWidget(self.keep_box)
-        hl.addStretch(1)
+        icons = QtWidgets.QHBoxLayout()
+        icons.setSpacing(2)
+        hl.addLayout(icons, 0)              # ~20 %: visibility and pin
+        self.mode_button = QtWidgets.QToolButton(self.header)
+        self.mode_button.clicked.connect(self.cycle_mode)
+        icons.addWidget(self.mode_button)
+        self.pin_button = QtWidgets.QToolButton(self.header)
+        self.pin_button.setCheckable(True)
+        self.pin_button.toggled.connect(self.set_pin)
+        icons.addWidget(self.pin_button)
         lay.addWidget(self.header)
 
         self.card = QtWidgets.QFrame(self)
@@ -215,13 +212,13 @@ class FloatingPanel(QtWidgets.QFrame):
             '#SRFloatingPanel { font-family: "%(family)s"; font-size: %(px)dpx; color: %(text)s; }'
             '#SRHeader { background: transparent; }'
             '#SRCard { background: %(card)s; border-radius: 10px; }'
-            '#SRHeader QPushButton { border: 1px solid %(line)s; border-radius: 7px; padding: 4px 10px;'
+            '#SRHeader QPushButton { border: 1px solid %(line)s; border-radius: 7px; padding: 4px 2px; margin: 0; min-width: 0px;'
             ' color: %(text)s; background: %(field)s; }'
             '#SRHeader QPushButton:checked { background: %(accent)s; border-color: %(accent)s;'
             ' color: %(accentText)s; font-weight: bold; }'
-            '#SRHeader QComboBox { border: 1px solid %(line)s; border-radius: 7px; padding: 3px 8px;'
-            ' color: %(text)s; background: %(field)s; }'
-            '#SRHeader QCheckBox { color: %(muted)s; }'
+            '#SRHeader QToolButton { border: none; border-radius: 6px; color: %(muted)s;'
+            ' padding: 2px 4px; font-size: %(icon)dpx; }'
+            '#SRHeader QToolButton:hover { background: %(field)s; }'
             '#SRCard QTreeView { background: transparent; border: none; gridline-color: %(card)s;'
             ' color: %(text)s; outline: 0; }'
             '#SRCard QTreeView::item { min-height: %(row)dpx; padding: 0 4px; border: none; }'
@@ -233,7 +230,8 @@ class FloatingPanel(QtWidgets.QFrame):
             '#SRCard QScrollBar::add-page, #SRCard QScrollBar::sub-page { background: none; }'
             '#SRCard QLineEdit, #SRCard QComboBox, #SRCard QAbstractSpinBox { border: 1px solid %(line)s;'
             ' border-radius: 6px; padding: 2px 6px; background: %(field)s; color: %(text)s; }'
-            % dict(t, px=px, row=int(round(28 * t['s']))))
+            % dict(t, px=px, row=int(round(28 * t['s'])), icon=int(round(15 * t['s']))))
+        self.icon_color, self.accent = QtGui.QColor(t['muted']), QtGui.QColor(t['accent'])
         # group rows: section titles like the QML cards (muted, bold) on the card colour
         self.group_colors = (QtGui.QColor(t['card']), QtGui.QColor(t['muted']))
         self.tint = QtGui.QColor(t['window'])
@@ -331,6 +329,15 @@ class FloatingPanel(QtWidgets.QFrame):
         m = prefs.get('PanelVisibility')
         return m if m in VISIBILITY else 'Fixed'
 
+    def cycle_mode(self):
+        self.set_mode(VISIBILITY[(VISIBILITY.index(self.mode()) + 1) % 3])
+
+    def set_pin(self, on):
+        prefs.set('KeepOpenOnTask', on)
+        self.pin_button.setIcon(_pin_icon(on, self.icon_color, self.accent))
+        self.pin_button.setToolTip('Pinned: the panel stays open while a task is open (click to unpin)'
+                                   if on else 'Not pinned: the panel may hide during tasks (click to pin)')
+
     def set_mode(self, m):
         prefs.set('PanelVisibility', m)
         self.apply_mode()
@@ -345,8 +352,15 @@ class FloatingPanel(QtWidgets.QFrame):
 
     def apply_mode(self):
         m = self.mode()
-        self.mode_box.setCurrentIndex(VISIBILITY.index(m))
-        self.keep_box.setChecked(prefs.get('KeepOpenOnTask'))
+        nxt = VISIBILITY[(VISIBILITY.index(m) + 1) % 3]
+        self.mode_button.setText({'Fixed': '▣', 'Rolled up': '▤', 'Autohide': '◧'}[m])
+        self.mode_button.setToolTip('%s (click for %s)' % ({
+            'Fixed': 'Fixed: always open', 'Rolled up': 'Rolled up: opens when the mouse is over it',
+            'Autohide': 'Autohide: slides away, touch the screen edge to bring it back'}[m], nxt))
+        self.pin_button.blockSignals(True)
+        self.pin_button.setChecked(prefs.get('KeepOpenOnTask'))
+        self.pin_button.blockSignals(False)
+        self.set_pin(self.pin_button.isChecked())
         self._easing()
         if m != 'Autohide' and self.hidden_side:
             self.slide(False)
@@ -397,7 +411,7 @@ class FloatingPanel(QtWidgets.QFrame):
             x = -g.width() - 2 if self.hidden_side == 'left' else self.host.width() + 2
             end = QtCore.QPoint(x, g.y())
         else:
-            end = getattr(self, '_home', g.topLeft())
+            end = self._placed().topLeft() if hasattr(self, 'wanted') else g.topLeft()
             self.hidden_side = None
             self.show()
             self.raise_()
@@ -505,18 +519,45 @@ class FloatingPanel(QtWidgets.QFrame):
         self._grab_backdrop()
 
     def save_geometry(self):
+        """Only after the user moved or resized it.  A panel on the right half is
+        remembered by its distance from the right edge, so that it stays there
+        when the window or the docks change size."""
         g = self.geometry() if not self.hidden_side else QtCore.QRect(self._home, self.size())
         h = getattr(self, '_full_height', g.height()) if self.rolled else g.height()
-        prefs.set('PanelGeometry', '%d,%d,%d,%d' % (g.x(), g.y(), g.width(), h))
+        x = g.x()
+        if g.center().x() > self.host.width() / 2:
+            x = -(self.host.width() - g.right())        # negative: from the right edge
+        self.wanted = (x, g.y(), g.width(), h)
+        prefs.set('PanelGeometry', '%d,%d,%d,%d' % self.wanted)
+
+    def _placed(self):
+        """Where the remembered geometry falls in the current view area."""
+        x, y, w, h = self.wanted
+        W, H = self.host.width(), self.host.height()
+        w, h = max(220, min(w, W)), max(160, min(h, H))
+        if x < 0:
+            x = W + x - w + 1
+        return QtCore.QRect(max(0, min(x, W - w)), max(0, min(y, H - h)), w, h)
 
     def restore_geometry(self):
         try:
-            x, y, w, h = [int(v) for v in prefs.get('PanelGeometry').split(',')]
-        except ValueError:
-            w, h = 340, min(560, max(300, self.host.height() - 40))
-            x, y = self.host.width() - w - 16, 16
-        w, h = max(220, min(w, self.host.width())), max(160, min(h, self.host.height()))
-        self.setGeometry(max(0, min(x, self.host.width() - w)), max(0, min(y, self.host.height() - h)), w, h)
+            self.wanted = tuple(int(v) for v in prefs.get('PanelGeometry').split(','))
+            assert len(self.wanted) == 4
+        except (ValueError, AssertionError):
+            self.wanted = (-16, 16, 340, 560)
+        self.place()
+
+    def place(self):
+        r = self._placed()
+        if self.rolled:
+            self._full_height = r.height()
+            r.setHeight(self.height())
+        if self.hidden_side:
+            self._home = r.topLeft()
+            x = -r.width() - 2 if self.hidden_side == 'left' else self.host.width() + 2
+            self.setGeometry(x, r.y(), r.width(), r.height())
+        else:
+            self.setGeometry(r)
 
     def eventFilter(self, obj, ev):
         if self.tasks is not None and obj is self.tasks.widget and ev.type() == QtCore.QEvent.Show:
@@ -524,10 +565,9 @@ class FloatingPanel(QtWidgets.QFrame):
             if self.stack.currentWidget() is not obj:
                 QtCore.QTimer.singleShot(0, self._task_shown)
             return False
-        if obj is self.host and ev.type() == QtCore.QEvent.Resize and not self.hidden_side:
-            g = self.geometry()
-            self.move(max(0, min(g.x(), self.host.width() - g.width())),
-                      max(0, min(g.y(), self.host.height() - g.height())))
+        if obj is self.host and ev.type() == QtCore.QEvent.Resize and self._resize is None \
+                and hasattr(self, 'wanted'):
+            self.place()                # never overwrites what the user chose
         return False
 
     def _edges(self, pos):
@@ -622,6 +662,22 @@ class FloatingPanel(QtWidgets.QFrame):
         pen = QtGui.QPen(self.border)
         p.setPen(pen)
         p.drawPath(path)
+
+
+def _pin_icon(on, color, accent):
+    """A push pin: upright and filled when pinned, tilted outline when not."""
+    c = (accent if on else color).name()
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+           '<g transform="rotate(%d 12 12)" fill="%s" stroke="%s" stroke-width="1.6" '
+           'stroke-linejoin="round" stroke-linecap="round">'
+           '<path d="M8 3h8l-1.5 6 3.5 3.5H6L9.5 9z" fill-opacity="%s"/>'
+           '<path d="M12 12.5V21" fill="none"/></g></svg>'
+           % (0 if on else 40, c, c, '1' if on else '0'))
+    pm = QtGui.QPixmap()
+    pm.loadFromData(QtCore.QByteArray(svg.encode()), 'SVG')
+    if not pm.isNull():
+        pm = pm.scaled(36, 36, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+    return QtGui.QIcon(pm)
 
 
 def _now():
