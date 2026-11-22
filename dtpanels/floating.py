@@ -137,12 +137,12 @@ class FloatingPanel(QtWidgets.QFrame):
         self._outside = 0
 
         lay = QtWidgets.QVBoxLayout(self)
-        lay.setContentsMargins(EDGE, EDGE, EDGE, EDGE)
-        lay.setSpacing(EDGE)
+        lay.setContentsMargins(EDGE + 6, EDGE + 4, EDGE + 6, EDGE + 6)
+        lay.setSpacing(EDGE + 2)
         self.header = _Header(self)
         hl = QtWidgets.QHBoxLayout(self.header)
         hl.setContentsMargins(6, 4, 6, 4)
-        hl.setSpacing(4)
+        hl.setSpacing(6)
         self.buttons = {}
         for name in ('Data', 'View', 'Task'):
             b = QtWidgets.QPushButton(name, self.header)
@@ -183,41 +183,35 @@ class FloatingPanel(QtWidgets.QFrame):
 
     # -------------------------------------------------------------- set up
     def _style(self):
-        pal = QtWidgets.QApplication.palette()
-        dark = pal.color(QtGui.QPalette.Window).lightness() < 128
-        head = 'rgba(255,255,255,18)' if dark else 'rgba(0,0,0,14)'
-        card = pal.color(QtGui.QPalette.Base).name()
-        accent = pal.color(QtGui.QPalette.Highlight).name()
-        text = pal.color(QtGui.QPalette.WindowText).name()
-        base = pal.color(QtGui.QPalette.Base)
-        alt = (base.lighter(108) if dark else base.darker(103)).name()
-        mid = pal.color(QtGui.QPalette.Mid).name()
-        hl = pal.color(QtGui.QPalette.Highlight)
-        k = 0.22 if dark else 0.14         # group rows: the base tinted with the accent colour
-        group_bg = QtGui.QColor(int(base.red() * (1 - k) + hl.red() * k),
-                                int(base.green() * (1 - k) + hl.green() * k),
-                                int(base.blue() * (1 - k) + hl.blue() * k)).name()
+        """The same theme as ShowRoom's QML panels (bridge.make_theme)."""
+        from dtpanels.bridge import make_theme
+        t = make_theme()
+        px = int(round(12 * t['s']))
         self.setStyleSheet(
-            '#SRHeader { background: %s; border-radius: 8px; }'
-            '#SRCard { background: %s; border-radius: 8px; }'
-            '#SRHeader QPushButton { border: none; border-radius: 6px; padding: 4px 12px; color: %s; background: transparent; }'
-            '#SRHeader QPushButton:checked { background: %s; color: white; font-weight: bold; }'
-            '#SRHeader QToolButton { border: none; color: %s; padding: 2px 6px; }'
-            '#SRCard QTreeView { background: transparent; border: none; gridline-color: %s;'
-            ' show-decoration-selected: 1; outline: 0; }'
-            '#SRCard QTreeView::item { min-height: 26px; padding: 0 4px; border: none; }'
-            '#SRCard QTreeView::item:selected { background: %s; color: white; border-radius: 5px; }'
+            '#SRFloatingPanel { font-family: "%(family)s"; font-size: %(px)dpx; color: %(text)s; }'
+            '#SRHeader { background: transparent; }'
+            '#SRCard { background: %(card)s; border-radius: 10px; }'
+            '#SRHeader QPushButton { border: 1px solid %(line)s; border-radius: 7px; padding: 4px 10px;'
+            ' color: %(text)s; background: %(field)s; }'
+            '#SRHeader QPushButton:checked { background: %(accent)s; border-color: %(accent)s;'
+            ' color: %(accentText)s; font-weight: bold; }'
+            '#SRHeader QToolButton { border: none; color: %(muted)s; padding: 2px 6px; }'
+            '#SRCard QTreeView { background: transparent; border: none; gridline-color: %(card)s;'
+            ' color: %(text)s; outline: 0; }'
+            '#SRCard QTreeView::item { min-height: %(row)dpx; padding: 0 4px; border: none; }'
+            '#SRCard QTreeView::item:selected { background: %(accent)s; color: %(accentText)s; }'
             '#SRCard QHeaderView::section { background: transparent; border: none; padding: 4px; }'
             '#SRCard QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }'
-            '#SRCard QScrollBar::handle:vertical { background: %s; border-radius: 3px; min-height: 24px; }'
+            '#SRCard QScrollBar::handle:vertical { background: %(line)s; border-radius: 3px; min-height: 24px; }'
             '#SRCard QScrollBar::add-line, #SRCard QScrollBar::sub-line { height: 0; }'
             '#SRCard QScrollBar::add-page, #SRCard QScrollBar::sub-page { background: none; }'
-            '#SRCard QLineEdit, #SRCard QComboBox, #SRCard QAbstractSpinBox { border: 1px solid %s;'
-            ' border-radius: 5px; padding: 1px 4px; background: %s; }'
-            % (head, card, text, accent, text, alt, accent, mid, mid, card))
-        self.group_colors = (QtGui.QColor(group_bg),
-                             QtGui.QColor(accent).lighter(140) if dark else QtGui.QColor(accent).darker(120))
-        self.tint = pal.color(QtGui.QPalette.Window)
+            '#SRCard QLineEdit, #SRCard QComboBox, #SRCard QAbstractSpinBox { border: 1px solid %(line)s;'
+            ' border-radius: 6px; padding: 2px 6px; background: %(field)s; color: %(text)s; }'
+            % dict(t, px=px, row=int(round(28 * t['s']))))
+        # group rows: section titles like the QML cards (muted, bold) on the card colour
+        self.group_colors = (QtGui.QColor(t['card']), QtGui.QColor(t['muted']))
+        self.tint = QtGui.QColor(t['window'])
+        self.border = QtGui.QColor(t['line'])
 
     def adopt(self):
         """Take the property editor and the task view (when FreeCAD has them)."""
@@ -535,15 +529,15 @@ class FloatingPanel(QtWidgets.QFrame):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         path = QtGui.QPainterPath()
-        path.addRoundedRect(QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 12, 12)
+        path.addRoundedRect(QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 16, 16)
         p.setClipPath(path)
         tint = QtGui.QColor(self.tint)
         if self._backdrop is not None:
             p.drawImage(0, 0, self._backdrop)
-            tint.setAlpha(150)
+            tint.setAlpha(215)
         p.fillPath(path, tint)
         p.setClipping(False)
-        pen = QtGui.QPen(QtGui.QColor(0, 0, 0, 60))
+        pen = QtGui.QPen(self.border)
         p.setPen(pen)
         p.drawPath(path)
 
