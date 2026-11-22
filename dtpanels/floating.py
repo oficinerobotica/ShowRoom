@@ -13,6 +13,8 @@ from PySide import QtCore, QtGui, QtWidgets
 from Utils import prefs
 
 VISIBILITY = ['Fixed', 'Rolled up', 'Autohide']
+EASINGS = ['OutQuart', 'OutCubic', 'OutQuint', 'OutExpo', 'OutBack', 'InOutExpo', 'InOutCubic',
+           'Linear']
 EDGE = 6            # resize border, px
 HIDE_DELAY = 1500   # ms outside the panel before autohide / roll up
 GRACE = 3000        # ms a panel shown by a selection or a task stays before hiding
@@ -147,9 +149,12 @@ class FloatingPanel(QtWidgets.QFrame):
         lay.setContentsMargins(EDGE + 6, EDGE + 4, EDGE + 6, EDGE + 6)
         lay.setSpacing(EDGE + 2)
         self.header = _Header(self)
-        hl = QtWidgets.QHBoxLayout(self.header)
-        hl.setContentsMargins(6, 4, 6, 4)
+        rows = QtWidgets.QVBoxLayout(self.header)
+        rows.setContentsMargins(6, 4, 6, 2)
+        rows.setSpacing(6)
+        hl = QtWidgets.QHBoxLayout()
         hl.setSpacing(6)
+        rows.addLayout(hl)
         self.buttons = {}
         for name in ('Data', 'View', 'Task'):
             b = QtWidgets.QPushButton(name, self.header)
@@ -159,10 +164,20 @@ class FloatingPanel(QtWidgets.QFrame):
             hl.addWidget(b)
             self.buttons[name] = b
         hl.addStretch(1)
-        self.mode_button = QtWidgets.QToolButton(self.header)
-        self.mode_button.setToolTip('Visibility: fixed, rolled up, autohide')
-        self.mode_button.clicked.connect(self.cycle_mode)
-        hl.addWidget(self.mode_button)
+        hl = QtWidgets.QHBoxLayout()        # second row: visibility and pin
+        hl.setSpacing(8)
+        rows.addLayout(hl)
+        self.mode_box = QtWidgets.QComboBox(self.header)
+        self.mode_box.addItems(VISIBILITY)
+        self.mode_box.setToolTip('Visibility of the panel')
+        self.mode_box.activated.connect(lambda i: self.set_mode(VISIBILITY[i]))
+        hl.addWidget(self.mode_box)
+        self.keep_box = QtWidgets.QCheckBox('Pin tasks', self.header)
+        self.keep_box.setToolTip('Keep the panel open while a task is open')
+        self.keep_box.setChecked(prefs.get('KeepOpenOnTask'))
+        self.keep_box.toggled.connect(lambda on: prefs.set('KeepOpenOnTask', on))
+        hl.addWidget(self.keep_box)
+        hl.addStretch(1)
         lay.addWidget(self.header)
 
         self.card = QtWidgets.QFrame(self)
@@ -180,11 +195,7 @@ class FloatingPanel(QtWidgets.QFrame):
 
         self._style()
         self.anim = QtCore.QPropertyAnimation(self, b'pos', self)
-        self.anim.setDuration(180)
-        self.anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
         self.roll_anim = QtCore.QPropertyAnimation(self, b'size', self)
-        self.roll_anim.setDuration(450)
-        self.roll_anim.setEasingCurve(QtCore.QEasingCurve.InOutExpo)
         self.roll_anim.finished.connect(self._rolled_end)
         self.timer = QtCore.QTimer(self)
         self.timer.setInterval(120)
@@ -208,7 +219,9 @@ class FloatingPanel(QtWidgets.QFrame):
             ' color: %(text)s; background: %(field)s; }'
             '#SRHeader QPushButton:checked { background: %(accent)s; border-color: %(accent)s;'
             ' color: %(accentText)s; font-weight: bold; }'
-            '#SRHeader QToolButton { border: none; color: %(muted)s; padding: 2px 6px; }'
+            '#SRHeader QComboBox { border: 1px solid %(line)s; border-radius: 7px; padding: 3px 8px;'
+            ' color: %(text)s; background: %(field)s; }'
+            '#SRHeader QCheckBox { color: %(muted)s; }'
             '#SRCard QTreeView { background: transparent; border: none; gridline-color: %(card)s;'
             ' color: %(text)s; outline: 0; }'
             '#SRCard QTreeView::item { min-height: %(row)dpx; padding: 0 4px; border: none; }'
@@ -318,13 +331,23 @@ class FloatingPanel(QtWidgets.QFrame):
         m = prefs.get('PanelVisibility')
         return m if m in VISIBILITY else 'Fixed'
 
-    def cycle_mode(self):
-        prefs.set('PanelVisibility', VISIBILITY[(VISIBILITY.index(self.mode()) + 1) % 3])
+    def set_mode(self, m):
+        prefs.set('PanelVisibility', m)
         self.apply_mode()
+
+    def _easing(self):
+        name = prefs.get('PanelEasing')
+        curve = getattr(QtCore.QEasingCurve, name if name in EASINGS else 'OutQuart')
+        ms = max(0, min(2000, prefs.get('PanelAnimMs')))
+        for a in (self.anim, self.roll_anim):
+            a.setEasingCurve(curve)
+            a.setDuration(ms)
 
     def apply_mode(self):
         m = self.mode()
-        self.mode_button.setText({'Fixed': '▣', 'Rolled up': '▤', 'Autohide': '◧'}[m])
+        self.mode_box.setCurrentIndex(VISIBILITY.index(m))
+        self.keep_box.setChecked(prefs.get('KeepOpenOnTask'))
+        self._easing()
         if m != 'Autohide' and self.hidden_side:
             self.slide(False)
         self.roll(m == 'Rolled up')
@@ -449,7 +472,8 @@ class FloatingPanel(QtWidgets.QFrame):
         inside = self.geometry().adjusted(-4, -4, 4, 4).contains(pos)
         busy = (QtWidgets.QApplication.activePopupWidget() is not None
                 or QtWidgets.QApplication.mouseButtons() != QtCore.Qt.NoButton
-                or _now() < self.shown_until)
+                or _now() < self.shown_until
+                or (prefs.get('KeepOpenOnTask') and dialog))
         if m == 'Autohide' and self.hidden_side:
             in_host = self.host.rect().contains(pos)
             at_edge = pos.x() <= 3 if self.hidden_side == 'left' else pos.x() >= self.host.width() - 4

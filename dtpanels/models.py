@@ -893,6 +893,13 @@ class SettingsModel(Model):
               options=['Fixed', 'Rolled up', 'Autohide'],
               tip='Autohide: slides away, comes back when the mouse touches the screen edge '
                   'on its side, when something is selected or when a task opens'),
+            P('KeepOpenOnTask', 'Keep it open while a task is open', 'bool', 'Properties panel'),
+            P('PanelEasing', 'Animation', 'enum', 'Properties panel',
+              options=['OutQuart', 'OutCubic', 'OutQuint', 'OutExpo', 'OutBack', 'InOutExpo',
+                       'InOutCubic', 'Linear'],
+              tip='Out curves start fast and slow down at the end: the most natural'),
+            P('PanelAnimMs', 'Animation time', 'number', 'Properties panel', min=0, max=1500,
+              step=50, unit='ms', decimals=0, cast='int', hardMin=0, hardMax=2000),
             P('PanelBlur', 'Blurred background', 'bool', 'Properties panel'),
             P('AutoTask', 'Autotask: show the Task tab when a task opens', 'bool',
               'Properties panel', tip='Pad, Pocket, sketch editing...'),
