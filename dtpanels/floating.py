@@ -61,7 +61,10 @@ class _Borrowed:
             self.kind = 'dock'
             self.dock_visible = p.isVisible()
         elif p is not None and p.layout() is not None:
-            self.index = p.layout().indexOf(widget)
+            lay = p.layout()
+            self.index = lay.indexOf(widget)
+            if isinstance(lay, QtWidgets.QGridLayout) and self.index >= 0:
+                self.grid = lay.getItemPosition(self.index)
 
     def give_back(self):
         w, p = self.widget, self.parent
@@ -82,8 +85,12 @@ class _Borrowed:
             elif self.kind == 'dock':
                 p.setWidget(w)
                 p.setVisible(self.dock_visible)
-            elif p.layout() is not None:
+            elif isinstance(p.layout(), QtWidgets.QGridLayout):
+                p.layout().addWidget(w, *getattr(self, 'grid', (0, 0, 1, 1)))
+            elif hasattr(p.layout(), 'insertWidget'):
                 p.layout().insertWidget(max(self.index, 0), w)
+            elif p.layout() is not None:
+                p.layout().addWidget(w)
             else:
                 w.setParent(p)
             w.show()
