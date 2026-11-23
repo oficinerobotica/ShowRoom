@@ -476,6 +476,8 @@ class GridModel(Model):
                  unit='mm', decimals=0, cast='int', hardMin=1),
             prop(o, 'Spacing', 'Spacing', 'number', 'Grid', min=1, max=max(100, nice(size / 5)), step=1,
                  unit='mm', decimals=0, cast='int', hardMin=1),
+            prop(o, 'Style', 'Style', 'enum', 'Grid', tip='The compass rose has north on +Y, '
+                 'like the sun compass of the lights'),
             prop(o, 'Color', 'Line color', 'color', 'Grid', presets=GRID_COLORS),
             prop(o, 'Dynamic', 'Follow the bottom of the model', 'bool', 'Placement'),
             prop(o, 'ZOffset', 'Gap below the model', 'number', 'Placement', min=-50, max=50, step=0.5,
@@ -892,6 +894,8 @@ class SettingsModel(Model):
             P('AutoScene', 'Add the scene to every new document', 'bool', 'New documents'),
             P('StartRig', 'Starting lights', 'enum', 'New documents', options=self.prefs.RIGS),
             P('AutoGrid', 'Dynamic grid', 'bool', 'New documents'),
+            P('DefGridStyle', 'Grid style', 'enum', 'New documents', options=['Grid', 'Compass rose'],
+              tip='Also used by Create dynamic grid'),
             P('AutoGroundPlane', 'Ground plane under the grid', 'bool', 'New documents'),
             P('AutoSceneOnOpen', 'Also add it to opened files without a scene', 'bool',
               'New documents', tip='Files that have a scene always keep their own'),

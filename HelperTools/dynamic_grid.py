@@ -15,6 +15,8 @@ what makes it reliable:
   with the document (a visibility change is not yet applied to the view while
   the document signals it).
 """
+import math
+
 import FreeCAD
 from pivy import coin
 
@@ -22,6 +24,7 @@ from Utils import view_utils
 from Utils.resource_utils import iconPath
 
 GRID_TYPE = 'DynamicGrid'
+STYLES = ['Grid', 'Compass rose']
 SIZE_LIMITS = (1, 10 ** 6, 5)
 MAX_LINES = 2000            # per direction; more than this only freezes the view
 UPDATE_DELAY_MS = 60
@@ -29,6 +32,15 @@ EPS = 1e-6
 
 # properties of other objects whose change never moves the bottom of the scene
 IGNORED_PROPERTIES = ('Label', 'Label2', 'ExpressionEngine', 'Proxy', '_GroupTouched')
+
+
+def _default_style():
+    try:
+        from Utils import prefs
+        style = prefs.get('DefGridStyle')
+        return style if style in STYLES else STYLES[0]
+    except Exception:
+        return STYLES[0]
 
 
 def isGrid(obj):
@@ -55,6 +67,11 @@ class DynamicGrid:
         if 'Spacing' not in pl:
             obj.addProperty("App::PropertyIntegerConstraint", "Spacing", "Grid",
                             "Distance between the grid lines").Spacing = (10,) + SIZE_LIMITS
+        if 'Style' not in pl:
+            obj.addProperty("App::PropertyEnumeration", "Style", "Grid",
+                            "Square grid, or a compass rose with the cardinal points "
+                            "(north = +Y)").Style = STYLES
+            obj.Style = _default_style()
         if 'Dynamic' not in pl:
             obj.addProperty("App::PropertyBool", "Dynamic", "Grid",
                             "Keep the grid at the lowest point of the visible scene").Dynamic = True
@@ -74,7 +91,10 @@ class DynamicGrid:
                             "Color of the ground plane").GroundColor = (0.85, 0.85, 0.85)
 
     def onDocumentRestored(self, obj):
+        older = 'Style' not in obj.PropertiesList
         self.setProperties(obj)
+        if older:
+            obj.Style = 'Grid'          # a grid saved before the styles stays a grid
         for name in ('Size', 'Spacing'):
             try:
                 setattr(obj, name, (getattr(obj, name),) + SIZE_LIMITS)
@@ -164,10 +184,16 @@ class ViewProviderDynamicGrid:
         normal.vector.setValue(0, 0, 1)
         binding = coin.SoNormalBinding()
         binding.value = coin.SoNormalBinding.OVERALL
+        rose = getattr(self.Object, 'Style', 'Grid') == 'Compass rose'
+        if rose:                # a disc for the rose, a square for the grid
+            outline = [(half * 1.3 * math.cos(t), half * 1.18 * math.sin(t), 0)
+                       for t in [i * 2 * math.pi / 96 for i in range(96)]]
+        else:
+            outline = [(-half, -half, 0), (half, -half, 0), (half, half, 0), (-half, half, 0)]
         coords = coin.SoCoordinate3()
-        coords.point.setValues(0, 4, [(-half, -half, 0), (half, -half, 0), (half, half, 0), (-half, half, 0)])
+        coords.point.setValues(0, len(outline), outline)
         face = coin.SoFaceSet()
-        face.numVertices.setValue(4)
+        face.numVertices.setValue(len(outline))
         for node in (offset, hints, self.ground_color, normal, binding, coords, face):
             ground.addChild(node)
         self.ground_switch.addChild(ground)
@@ -179,14 +205,7 @@ class ViewProviderDynamicGrid:
         light_model.model = coin.SoLightModel.BASE_COLOR
         lines.addChild(light_model)
 
-        points = []
-        counts = []
-        for i in range(-steps, steps + 1):
-            if i == 0:
-                continue      # the axes are drawn below, in their own colors
-            v = i * spacing
-            points += [(-half, v, 0), (half, v, 0), (v, -half, 0), (v, half, 0)]
-            counts += [2, 2]
+        points, counts = ([], []) if rose else self._square_lines(half, steps, spacing)
         if points:
             grid_coords = coin.SoCoordinate3()
             grid_coords.point.setValues(0, len(points), points)
@@ -195,11 +214,13 @@ class ViewProviderDynamicGrid:
             lines.addChild(self.grid_color)
             lines.addChild(grid_coords)
             lines.addChild(grid_lines)
+        if rose:
+            self._rose(lines, half)
 
         style = coin.SoDrawStyle()
         style.lineWidth = 2
         lines.addChild(style)
-        for color, ends in (((1, 0, 0), [(-half, 0, 0), (half, 0, 0)]),      # X axis: red
+        for color, ends in () if rose else (((1, 0, 0), [(-half, 0, 0), (half, 0, 0)]),      # X axis: red
                             ((0, 1, 0), [(0, -half, 0), (0, half, 0)])):     # Y axis: green
             axis_color = coin.SoBaseColor()
             axis_color.rgb.setValue(*color)
@@ -211,6 +232,63 @@ class ViewProviderDynamicGrid:
                 lines.addChild(node)
         self.geometry.addChild(lines)
         self.updateGround()
+
+    @staticmethod
+    def _square_lines(half, steps, spacing):
+        points, counts = [], []
+        for i in range(-steps, steps + 1):
+            if i == 0:
+                continue      # the axes are drawn apart, in their own colors
+            v = i * spacing
+            points += [(-half, v, 0), (half, v, 0), (v, -half, 0), (v, half, 0)]
+            counts += [2, 2]
+        return points, counts
+
+    def _rose(self, lines, half):
+        """The compass of the sun's gizmo, on the ground: a dashed circle, four
+        ticks and the letters N E S W (north on +Y)."""
+        from Gizmos import images
+        group = coin.SoSeparator()
+        dash = coin.SoDrawStyle()
+        dash.lineWidth = 1.6
+        dash.linePattern = 0xCCCC
+        group.addChild(dash)
+        group.addChild(self.grid_color)
+        circle = [(half * math.sin(t), half * math.cos(t), 0) for t in [i * 2 * math.pi / 96 for i in range(97)]]
+        coords = coin.SoCoordinate3()
+        coords.point.setValues(0, len(circle), circle)
+        line = coin.SoLineSet()
+        line.numVertices.setValue(len(circle))
+        group.addChild(coords)
+        group.addChild(line)
+        ticks = coin.SoSeparator()
+        solid = coin.SoDrawStyle()
+        solid.lineWidth = 2.0
+        ticks.addChild(solid)
+        pts = []
+        for deg in (0, 90, 180, 270):
+            t = math.radians(deg)
+            d = (math.sin(t), math.cos(t))
+            pts += [(d[0] * half, d[1] * half, 0), (d[0] * half * 1.08, d[1] * half * 1.08, 0)]
+            label = coin.SoSeparator()
+            # never hidden by the ground, never in the depth (nor in the AO pass)
+            depth = coin.SoDepthBuffer()
+            depth.test = False
+            depth.write = False
+            label.addChild(depth)
+            tr = coin.SoTranslation()
+            tr.translation = (d[0] * half * 1.2, d[1] * half * 1.2, 0)
+            label.addChild(tr)
+            label.addChild(images.make(images.label, 'NESW'[deg // 90], dark=False, size=14))
+            ticks.addChild(label)
+        tc = coin.SoCoordinate3()
+        tc.point.setValues(0, len(pts), pts)
+        tl = coin.SoLineSet()
+        tl.numVertices.setValues(0, 4, [2, 2, 2, 2])
+        ticks.insertChild(tc, 1)
+        ticks.insertChild(tl, 2)
+        group.addChild(ticks)
+        lines.addChild(group)
 
     # -------------------------------------------------------------- updates
     def getDisplayModes(self, vobj):
@@ -229,7 +307,7 @@ class ViewProviderDynamicGrid:
             self.updateGridLocation()
         elif prop in ('Color', 'GroundColor'):
             self.updateColor()
-        elif prop in ('Size', 'Spacing'):
+        elif prop in ('Size', 'Spacing', 'Style'):
             self.rebuildGrid()
         elif prop == 'GroundPlane':
             self.updateGround()
