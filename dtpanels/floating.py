@@ -136,6 +136,8 @@ class FloatingPanel(QtWidgets.QFrame):
         self.setMouseTracking(True)
         self.setAttribute(QtCore.Qt.WA_StyledBackground, False)
         self.props = self.tasks = None
+        self.qml_page = self.prop_model = self.prop_bridge = None
+        self._qml_failed = False
         self.tab = 'Data'
         self.hidden_side = None         # autohide: 'left' / 'right' while slid away
         self.rolled = False
@@ -284,6 +286,8 @@ class FloatingPanel(QtWidgets.QFrame):
         return tabs
 
     def release(self):
+        if self.prop_bridge is not None:
+            self.prop_bridge.stop()
         self.timer.stop()
         self.blur_timer.stop()
         self.host.removeEventFilter(self)
@@ -302,13 +306,17 @@ class FloatingPanel(QtWidgets.QFrame):
         self.props = self.tasks = None
 
     # -------------------------------------------------------------- tabs
-    def show_tab(self, name):
+    def show_tab(self, name, native=False):
         self.tab = name
         for n, b in self.buttons.items():
             b.setChecked(n == name)
         if name == 'Task':
             has = self.tasks is not None and bool(Gui.Control.activeDialog())
             self.stack.setCurrentWidget(self.tasks.widget if has else self.empty)
+        elif self._qml_page() is not None and not native:
+            self.prop_model.tab = name
+            self.update_target()
+            self.stack.setCurrentWidget(self.qml_page)
         elif self.props is not None:
             self.stack.setCurrentWidget(self.props.widget)
             tabs = self._native_tabs(self.props.widget, False)
@@ -319,6 +327,50 @@ class FloatingPanel(QtWidgets.QFrame):
                 elif tabs.count() == 2:
                     # translated FreeCAD: the property view always has View first, Data second
                     tabs.setCurrentIndex(0 if name == 'View' else 1)
+
+    # -------------------------------------------------------------- QML properties
+    def _qml_page(self):
+        """ShowRoom's own Data / View editor (QML), made on first use."""
+        if not prefs.get('QmlProperties'):
+            return None
+        if self.qml_page is None and not self._qml_failed:
+            self._qml_failed = True
+            try:
+                from dtpanels import bridge as B
+                from dtpanels.properties import PropertiesModel
+                self.prop_model = PropertiesModel()
+                self.prop_model.open_native = self._open_native
+                self.prop_bridge = B.Bridge(self.prop_model)
+                view = B._qml_widget(self.prop_bridge)
+                if view is None:
+                    self.prop_bridge.stop()
+                    return None
+                area = QtWidgets.QScrollArea(self.stack)
+                area.setWidgetResizable(True)
+                area.setFrameShape(QtWidgets.QFrame.NoFrame)
+                area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+                area.setWidget(view)
+                area.setStyleSheet('QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }')
+                view.setMinimumWidth(0)
+                self.stack.addWidget(area)
+                self.qml_page, self._qml_failed = area, False
+            except Exception as error:
+                App.Console.PrintWarning('ShowRoom: QML properties unavailable (%s)\n' % error)
+                return None
+        return self.qml_page
+
+    def update_target(self):
+        if self.prop_model is None:
+            return
+        sel = Gui.Selection.getSelection()
+        obj = sel[0] if sel else None
+        if obj is not self.prop_model.target or self.prop_model.tab != self.tab:
+            self.prop_model.set_target(obj, self.tab if self.tab in ('Data', 'View') else None)
+        self.prop_bridge.refresh()
+
+    def _open_native(self, name):
+        """Placement, links, expressions...: FreeCAD's own editor; the tab button comes back."""
+        QtCore.QTimer.singleShot(0, lambda: self.show_tab(self.tab, native=True))
 
     def clicked_tab(self, name):
         if self.mode() == 'Rolled up' and not self.rolled and name == self.tab:
@@ -690,10 +742,18 @@ def _now():
 # ------------------------------------------------------------------ selection
 class _Selection:
     def _shown(self, *args):
-        if _panel is not None and not Gui.Control.activeDialog():
+        if _panel is None:
+            return
+        QtCore.QTimer.singleShot(0, _panel.update_target)
+        if not Gui.Control.activeDialog():
             _panel.reveal('Data' if _panel.tab == 'Task' else None)
 
+    def _cleared(self, *args):
+        if _panel is not None:
+            QtCore.QTimer.singleShot(0, _panel.update_target)
+
     addSelection = setSelection = _shown
+    removeSelection = clearSelection = _cleared
 
 
 # ------------------------------------------------------------------ public

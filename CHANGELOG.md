@@ -1,5 +1,9 @@
 # Changelog
 
+## ShowRoom 1.3.0
+
+- ShowRoom's own Data / View editor in the floating panel (QML): switches, choices, numbers with units, colours, sliders and text, grouped in cards; placement, links and expressions open FreeCAD's editor.
+
 ## ShowRoom 1.2.0
 
 - Floating properties panel: FreeCAD's property editor and task view in a panel over the 3D view, with Data / View / Task tabs, blurred background, resizing and fixed / rolled up / autohide visibility; Autotask opens the Task tab when a task starts.

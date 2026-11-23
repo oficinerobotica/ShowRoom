@@ -61,6 +61,7 @@ Rectangle {
                     : modelData.kind === "gallery" ? "GalleryRow.qml"
                     : modelData.kind === "light" ? "LightRow.qml"
                     : modelData.kind === "note" ? "NoteRow.qml"
+                    : (modelData.kind === "text" || modelData.kind === "native") ? "TextRow.qml"
                     : modelData.kind === "compass" ? "CompassRow.qml" : "NumberRow.qml",
                     { "p": modelData, "th": sec.th })
             }

@@ -7,7 +7,7 @@ Item {
     property var p
     property var th
     property real value: { var v = bridge.values[p.name]; return v === undefined ? 0 : v }
-    implicitHeight: Math.round(48 * th.s)
+    implicitHeight: Math.round((p.slider ? 48 : 30) * th.s)
     width: parent ? parent.width : 0
 
     function commit(v) {
@@ -65,6 +65,7 @@ Item {
     // slider
     Item {
         id: track
+        visible: p.slider
         anchors.left: parent.left
         anchors.right: parent.right
         y: Math.round(30 * th.s)

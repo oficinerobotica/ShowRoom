@@ -140,7 +140,9 @@ def _public(p):
                unit=p.get("unit", ""), tip=p.get("tip", ""), decimals=int(p.get("decimals", 2)),
                options=list(p.get("options", [])), special=p.get("special", ""),
                presets=list(p.get("presets", [])), browseLabel=p.get("browseLabel", "Browse…"),
-               shadowLabel=p.get("shadowLabel", "Shadows"))
+               shadowLabel=p.get("shadowLabel", "Shadows"), slider=bool(p.get("slider", True)),
+               readOnly=bool(p.get("readOnly", False)), button=p.get("button", ""),
+               action=p.get("action", ""))
     labels = list(p.get("optionLabels", out["options"]))
     # an enumeration with more values than labels (a file from an older version)
     out["optionLabels"] = [labels[i] if i < len(labels) else str(o) for i, o in enumerate(out["options"])]
@@ -213,9 +215,9 @@ class Bridge(QtCore.QObject):
 
     sections = QtCore.Property("QVariant", lambda self: self._sections, notify=sectionsChanged)
     theme = QtCore.Property("QVariant", lambda self: self._theme, constant=True)
-    title = QtCore.Property(str, lambda self: self.model.title, constant=True)
-    iconUrl = QtCore.Property(str, lambda self: QtCore.QUrl.fromLocalFile(self.model.icon).toString(),
-                              constant=True)
+    title = QtCore.Property(str, lambda self: self.model.title, notify=stateChanged)
+    iconUrl = QtCore.Property(str, lambda self: QtCore.QUrl.fromLocalFile(self.model.icon).toString()
+                              if self.model.icon else "", notify=stateChanged)
     subtitle = QtCore.Property(str, lambda self: self._safe(self.model.subtitle, ""), notify=stateChanged)
     values = QtCore.Property("QVariant", _get_values, notify=valuesChanged)
     hidden = QtCore.Property("QVariant", lambda self: self._safe(self.model.hidden, []), notify=valuesChanged)
