@@ -881,6 +881,7 @@ class SettingsModel(Model):
 
     def params(self):
         from SceneFX import navigation
+        from dtpanels.floating import EASINGS
         P = self._p
         unit = dict(min=0, max=1, step=0.05, hardMin=0, hardMax=1)
         return [
@@ -928,8 +929,7 @@ class SettingsModel(Model):
               'Properties panel', tip="Off: FreeCAD's property editor"),
             P('KeepOpenOnTask', 'Keep it open while a task is open', 'bool', 'Properties panel'),
             P('PanelEasing', 'Animation', 'enum', 'Properties panel',
-              options=['OutQuart', 'OutCubic', 'OutQuint', 'OutExpo', 'OutBack', 'InOutExpo',
-                       'InOutCubic', 'Linear'],
+              options=list(EASINGS),
               tip='Out curves start fast and slow down at the end: the most natural'),
             P('PanelAnimMs', 'Animation time', 'number', 'Properties panel', min=0, max=1500,
               step=50, unit='ms', decimals=0, cast='int', hardMin=0, hardMax=2000),

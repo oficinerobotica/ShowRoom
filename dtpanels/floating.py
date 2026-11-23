@@ -146,6 +146,10 @@ class FloatingPanel(QtWidgets.QFrame):
         self._resize = None
         self._backdrop = None
         self._outside = 0
+        self.wanted = None              # (x, y, w, h) the user left it at; x < 0: from the right
+        self._home = QtCore.QPoint()    # where an autohidden panel comes back to
+        self._full_height = 420         # height before rolling up
+        self.await_enter = False        # shown from the edge, far away: wait for the mouse
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(EDGE, EDGE + 2, EDGE, EDGE)
@@ -484,7 +488,7 @@ class FloatingPanel(QtWidgets.QFrame):
             end = short
         else:
             self.card.show()
-            end = getattr(self, '_full_height', 420)
+            end = self._full_height
         self.roll_anim.stop()
         self.roll_anim.setStartValue(QtCore.QSize(g.width(), g.height()))
         self.roll_anim.setEndValue(QtCore.QSize(g.width(), end))
@@ -508,7 +512,7 @@ class FloatingPanel(QtWidgets.QFrame):
             x = -g.width() - 2 if self.hidden_side == 'left' else self.host.width() + 2
             end = QtCore.QPoint(x, g.y())
         else:
-            end = self._placed().topLeft() if hasattr(self, 'wanted') else g.topLeft()
+            end = self._placed().topLeft() if self.wanted else g.topLeft()
             self.hidden_side = None
             self.show()
             self.raise_()
@@ -614,7 +618,7 @@ class FloatingPanel(QtWidgets.QFrame):
                 self.shown_until = _now() + 6000
                 self.await_enter = True
             return
-        if inside and getattr(self, 'await_enter', False):
+        if inside and self.await_enter:
             self.await_enter = False
             self.shown_until = 0
         if inside or busy:
@@ -640,7 +644,7 @@ class FloatingPanel(QtWidgets.QFrame):
         remembered by its distance from the right edge, so that it stays there
         when the window or the docks change size."""
         g = self.geometry() if not self.hidden_side else QtCore.QRect(self._home, self.size())
-        h = getattr(self, '_full_height', g.height()) if self.rolled else g.height()
+        h = self._full_height if self.rolled else g.height()
         x = g.x()
         if g.center().x() > self.host.width() / 2:
             x = -(self.host.width() - g.right())        # negative: from the right edge
@@ -683,7 +687,7 @@ class FloatingPanel(QtWidgets.QFrame):
                 QtCore.QTimer.singleShot(0, self._task_shown)
             return False
         if obj is self.host and ev.type() == QtCore.QEvent.Resize and self._resize is None \
-                and hasattr(self, 'wanted'):
+                and self.wanted:
             self.place()                # never overwrites what the user chose
         return False
 
@@ -850,15 +854,21 @@ def _now():
 
 # ------------------------------------------------------------------ selection
 class _Selection:
+    @staticmethod
+    def _ours():
+        """The property editor is putting the same selection back (see
+        properties.PropertiesModel._reselect): nothing to follow."""
+        return _panel is None or getattr(_panel.prop_model, 'reselecting', False)
+
     def _shown(self, *args):
-        if _panel is None:
+        if self._ours():
             return
         QtCore.QTimer.singleShot(0, _panel.update_target)
         if not Gui.Control.activeDialog():
             _panel.reveal('Data' if _panel.tab == 'Task' else None)
 
     def _cleared(self, *args):
-        if _panel is not None:
+        if not self._ours():
             QtCore.QTimer.singleShot(0, _panel.update_target)
 
     addSelection = setSelection = _shown

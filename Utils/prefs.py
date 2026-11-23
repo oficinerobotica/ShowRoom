@@ -92,10 +92,3 @@ def apply_start_workbench(on):
         else:
             general.RemString('AutoloadModule')
 
-
-def reset_all():
-    keep = group().GetBool('Migrated', False)
-    group().Clear()
-    if keep:
-        group().SetBool('Migrated', True)
-    apply_start_workbench(False)

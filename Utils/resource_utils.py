@@ -6,12 +6,8 @@ from os import path
 module_path = path.dirname(path.dirname(path.realpath(__file__)))
 resources_path = path.join(module_path, 'Resources')
 icons_path = path.join(resources_path, 'Icons')
-ui_path = path.join(resources_path, 'UI')
 
 
 def iconPath(name):
     return path.join(icons_path, name)
 
-
-def uiPath(name):
-    return path.join(ui_path, name)

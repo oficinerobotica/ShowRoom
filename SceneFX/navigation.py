@@ -39,7 +39,6 @@ class _ViewState:
         self.ao_switch = None
         self.shadow_group = None
         self.camera_address = 0
-        self.triggers = 0       # camera movements seen (diagnostics)
         self.pose = None
         self.sensor = coin.SoNodeSensor(self._camera_changed, None)
         self.timer = QtCore.QTimer(parent)
@@ -76,7 +75,6 @@ class _ViewState:
         if pose == self.pose:
             return
         self.pose = pose
-        self.triggers += 1
         if self.mode == MODE_FULL or _hold > 0:
             return
         if not self._has_effects():
@@ -189,7 +187,3 @@ def hold(on):
                 state.paused = False
                 state.apply()
 
-
-def is_paused(view):
-    state = _states.get(view_utils.node_address(view.getSceneGraph()))
-    return bool(state and state.paused)

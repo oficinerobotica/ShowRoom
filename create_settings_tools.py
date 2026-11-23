@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 # Copyright (c) 2025-2026 OficineRobotica
-import FreeCADGui  # noqa: F401
-
 from Utils.resource_utils import iconPath
 
 TOOLBAR = 'ShowRoom settings'

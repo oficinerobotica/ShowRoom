@@ -55,6 +55,7 @@ class PropertiesModel(Model):
         self.tab = 'Data'
         self.open_native = None         # callback(name) from the floating panel
         self.on_change = None           # callback after an expression was edited
+        self.reselecting = False        # True while _reselect puts the selection back
         self._fx = None
         self.title = 'Nothing selected'
         self.icon = ''
@@ -261,6 +262,36 @@ class PropertiesModel(Model):
             return dict(base, kind='text', readOnly=True, get=lambda: self._text(c, name))
         return native(lambda: self._text(c, name))
 
+    def _rehighlight(self):
+        """FreeCAD keeps the colours of a selected object (or face) in its
+        selection highlight until the selection changes: a new appearance would
+        only show after the next click in the view.  Selecting the same things
+        again, once the edits pause, shows it at once."""
+        from PySide import QtCore
+        if getattr(self, '_highlight', None) is None:
+            self._highlight = QtCore.QTimer()
+            self._highlight.setSingleShot(True)
+            self._highlight.setInterval(250)
+            self._highlight.timeout.connect(self._reselect)
+        self._highlight.start()
+
+    def _reselect(self):
+        sel = Gui.Selection.getSelectionEx('', 0)
+        if not sel:
+            return
+        picks = [(s.DocumentName, s.ObjectName, list(s.SubElementNames)) for s in sel]
+        self.reselecting = True
+        try:
+            Gui.Selection.clearSelection()
+            for doc_name, obj_name, subs in picks:
+                if subs:
+                    for sub in subs:
+                        Gui.Selection.addSelection(doc_name, obj_name, sub)
+                else:
+                    Gui.Selection.addSelection(doc_name, obj_name)
+        finally:
+            self.reselecting = False
+
     def _undoable(self, doc, key, title, change):
         """One undo step for a burst of changes to the same property (a slider
         being dragged): the first opens it, those within a second follow it."""
@@ -270,12 +301,14 @@ class PropertiesModel(Model):
         self._last_edit = (key, now)
         if last[0] == key and now - last[1] < 1.0:
             change()
-            return
-        doc.openTransaction(title)
-        try:
-            change()
-        finally:
-            doc.commitTransaction()
+        else:
+            doc.openTransaction(title)
+            try:
+                change()
+            finally:
+                doc.commitTransaction()
+        if self.tab == 'View' or key[1] == 'ShapeAppearance':
+            self._rehighlight()
 
     def _putter(self, c, label, recompute):
         doc = self.target.Document

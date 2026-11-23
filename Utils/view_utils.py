@@ -236,15 +236,51 @@ def helper_roots(doc):
     return roots
 
 
-def geometry_nodes(view, doc=None, skip=('light', 'grid')):
+def _see_through(obj, depth=0):
+    """``obj`` is shown transparent, or holds something visible that is (a Body
+    whose tip, a Part with a glass pane...)."""
+    try:
+        vo = obj.ViewObject
+        if vo is None or not vo.Visibility:
+            return False
+        if getattr(vo, 'Transparency', 0) > 0:
+            return True
+    except Exception:
+        return False
+    if depth < 8:
+        for child in getattr(obj, 'Group', None) or []:
+            if _see_through(child, depth + 1):
+                return True
+    return False
+
+
+def transparent_roots(doc):
+    """Addresses of the root nodes of the objects of ``doc`` that are see-through."""
+    roots = set()
+    try:
+        objects = doc.Objects if doc is not None else []
+    except ReferenceError:
+        return roots
+    for obj in objects:
+        if _see_through(obj):
+            try:
+                roots.add(node_address(obj.ViewObject.RootNode))
+            except Exception:
+                pass
+    return roots
+
+
+def geometry_nodes(view, doc=None, skip=('light', 'grid'), skip_transparent=False):
     """The view provider roots under the selection root: what the model is made of.
 
-    ``skip`` lists the kinds of helpers of this workbench to leave out.
+    ``skip`` lists the kinds of helpers of this workbench to leave out;
+    ``skip_transparent`` leaves out the objects shown see-through.
     """
     parts = SceneParts(view)
     if parts.selection is None:
         return []
     helpers = helper_roots(doc)
+    clear = transparent_roots(doc) if skip_transparent else set()
     nodes = []
 
     def collect(group):
@@ -256,7 +292,8 @@ def geometry_nodes(view, doc=None, skip=('light', 'grid')):
                 continue
             if name in NON_GEOMETRY_NAMES or type_name(child) in NON_GEOMETRY_TYPES:
                 continue
-            if helpers.get(node_address(child)) in skip:
+            address = node_address(child)
+            if helpers.get(address) in skip or address in clear:
                 continue
             nodes.append(child)
 

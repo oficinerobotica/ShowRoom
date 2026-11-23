@@ -21,10 +21,7 @@ from pivy import coin
 
 from Utils import view_utils
 
-LIGHT_TYPES = ('PointLight', 'DirectionalLight', 'SpotLight')
-
-# manipulator size: Scale / SCALE_UNIT is the factor applied to Coin's unit sized gizmo
-SCALE_UNIT = 5.0
+# limits of the (hidden, kept for older files) Scale property
 SCALE_LIMITS = (5, 1000000, 5)
 INTENSITY_LIMITS = (0.0, 1.0, 0.1)
 # FreeCAD's headlight is already at full strength: an extra light at 1.0 burns the scene out
@@ -285,15 +282,6 @@ def sceneExtent(doc):
     center = FreeCAD.Vector((box[0] + box[3]) / 2, (box[1] + box[4]) / 2, (box[2] + box[5]) / 2)
     size = FreeCAD.Vector(box[3] - box[0], box[4] - box[1], box[5] - box[2]).Length
     return center, size
-
-
-def gizmoScaleFor(size):
-    """Scale property value giving a gizmo in proportion to the scene."""
-    if size <= 0:
-        return SCALE_LIMITS[0]
-    step = SCALE_LIMITS[2]
-    value = int(round(size / 30.0 * SCALE_UNIT / step)) * step
-    return min(max(value, SCALE_LIMITS[0]), SCALE_LIMITS[1])
 
 
 def _show_gizmos():
