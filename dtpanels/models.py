@@ -857,7 +857,19 @@ class SettingsModel(Model):
     def subtitle(self):
         return 'Saved in your preferences, for every document'
 
+    searchable = True
+    filter = ''
+
+    def hidden(self):
+        text = self.filter.strip().lower()
+        if not text:
+            return []
+        return [p['name'] for p in self.params()
+                if text not in p['label'].lower() and text not in p.get('section', '').lower()]
+
     def _p(self, name, label, kind, section, **extra):
+        extra.setdefault('default', self.prefs.default(name))
+
         def get():
             value = self.values[name]
             return float(value) if kind == 'number' else value
@@ -1010,6 +1022,12 @@ class SettingsModel(Model):
 def open_settings():
     import FreeCADGui
     from dtpanels import bridge
+    try:
+        from dtpanels import prefs_window
+        if prefs_window.show():
+            return None
+    except Exception as error:
+        App.Console.PrintWarning("ShowRoom: %s\n" % error)
     if FreeCADGui.Control.activeDialog():
         App.Console.PrintWarning("ShowRoom: close the open task panel first.\n")
         return None

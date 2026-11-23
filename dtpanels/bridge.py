@@ -148,7 +148,8 @@ def _public(p):
                presets=list(p.get("presets", [])), browseLabel=p.get("browseLabel", "Browse…"),
                shadowLabel=p.get("shadowLabel", "Shadows"), slider=bool(p.get("slider", True)),
                readOnly=bool(p.get("readOnly", False)), button=p.get("button", ""),
-               action=p.get("action", ""), fx=p.get("fx", ""), components=list(p.get("components", [])))
+               action=p.get("action", ""), fx=p.get("fx", ""), components=list(p.get("components", [])),
+               hasDefault="default" in p, default=p.get("default"))
     labels = list(p.get("optionLabels", out["options"]))
     # an enumeration with more values than labels (a file from an older version)
     out["optionLabels"] = [labels[i] if i < len(labels) else str(o) for i, o in enumerate(out["options"])]

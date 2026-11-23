@@ -119,6 +119,25 @@ Rectangle {
                     : (modelData.kind === "text" || modelData.kind === "native") ? "TextRow.qml"
                     : modelData.kind === "compass" ? "CompassRow.qml" : "NumberRow.qml",
                     { "p": modelData, "th": sec.th })
+                // changed from the default: a dot in the margin; clicking it puts the default back
+                property bool changed: modelData.hasDefault && !hiddenRow
+                    && String(bridge.values[modelData.name]) !== String(modelData["default"])
+                Rectangle {
+                    visible: parent.changed
+                    x: -Math.round(8 * sec.th.s); y: Math.round(12 * sec.th.s)
+                    width: Math.round(6 * sec.th.s); height: width; radius: width / 2
+                    color: sec.th.accent
+                    SequentialAnimation on opacity {
+                        running: parent.visible; loops: Animation.Infinite
+                        NumberAnimation { from: 1.0; to: 0.35; duration: 900; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 0.35; to: 1.0; duration: 900; easing.type: Easing.InOutSine }
+                    }
+                    MouseArea {
+                        anchors.fill: parent; anchors.margins: -6
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (typeof bridge.resetParam === "function") bridge.resetParam(modelData.name)
+                    }
+                }
             }
         }
     }
