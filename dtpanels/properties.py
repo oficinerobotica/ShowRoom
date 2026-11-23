@@ -239,13 +239,27 @@ class PropertiesModel(Model):
             # object is shown with (Shape Appearance of the view)
             rows = [dict(base, kind='native', readOnly=True, button='Edit', action='native:' + name,
                          get=lambda: getattr(getattr(c, name), 'Name', '') or '')]
-            vo = getattr(self.target, 'ViewObject', None)
+            vo = self._appearance_owner()
             if vo is not None and 'ShapeAppearance' in vo.PropertiesList:
                 rows += self._material(vo, 'ShapeAppearance', 'Appearance', dict(base), True,
-                                       self._putter(vo, 'Appearance', recompute=False))
+                                       self._putter(vo, 'Appearance', recompute=False),
+                                       transparency=False)
+            if vo is not None and 'Transparency' in vo.PropertiesList:
+                # the View tab's own Transparency, here too to save a click
+                put_view = self._putter(vo, 'Transparency', recompute=False)
+
+                def to_int(v):
+                    return int(round(float(v)))
+                setter = put_view(to_int)
+                setter.name = 'Transparency'
+                rows.append(dict(base, name='View@Transparency', label='Transparency', kind='number',
+                                 min=0, max=100, step=1, decimals=0, unit='%', hardMin=0, hardMax=100,
+                                 get=lambda: float(vo.Transparency), set=setter))
             return rows
         if kind in ('Material', 'MaterialList'):
-            return self._material(c, name, label, base, kind == 'MaterialList', put)
+            # the material's transparency only where the view has no Transparency of its own
+            return self._material(c, name, label, base, kind == 'MaterialList', put,
+                                  transparency='Transparency' not in c.PropertiesList)
         if kind in ('Link', 'LinkChild', 'LinkGlobal', 'LinkHidden'):
             objs = [o for o in doc.Objects if o is not self.target]
 
@@ -307,8 +321,23 @@ class PropertiesModel(Model):
                 change()
             finally:
                 doc.commitTransaction()
-        if self.tab == 'View' or key[1] == 'ShapeAppearance':
+        if self.tab == 'View' or key[1] in ('ShapeAppearance', 'Transparency'):
             self._rehighlight()
+
+    def _appearance_owner(self):
+        """The view provider that really shows the target's colour: a feature
+        inside a Body has its appearance hidden and follows the Body's."""
+        obj = self.target
+        vo = getattr(obj, 'ViewObject', None)
+        try:
+            if vo is not None and 'Hidden' in vo.getEditorMode('ShapeAppearance'):
+                parent = obj.getParentGeoFeatureGroup()
+                pvo = getattr(parent, 'ViewObject', None)
+                if pvo is not None and 'ShapeAppearance' in pvo.PropertiesList:
+                    return pvo
+        except Exception:
+            pass
+        return vo
 
     def _putter(self, c, label, recompute):
         doc = self.target.Document
@@ -323,7 +352,7 @@ class PropertiesModel(Model):
             return setter
         return put
 
-    def _material(self, c, name, label, base, many, put):
+    def _material(self, c, name, label, base, many, put, transparency=True):
         """Colour (with quick picks) and shininess of a material; for a list (Shape
         Appearance) the change goes to every face."""
         from dtpanels.models import SHAPE_COLORS, LINE_COLORS
@@ -365,10 +394,11 @@ class PropertiesModel(Model):
                      get=lambda: hex_color(first().DiffuseColor), set=setter('DiffuseColor')),
                 dict(base, name=name + '@shine', label=lab('shininess'), kind='number',
                      min=0, max=1, step=0.05, decimals=2, hardMin=0, hardMax=1,
-                     get=lambda: float(first().Shininess), set=setter('Shininess')),
+                     get=lambda: float(first().Shininess), set=setter('Shininess'))] + ([
                 dict(base, name=name + '@transp', label=lab('transparency'), kind='number',
                      min=0, max=100, step=1, decimals=0, unit='%', hardMin=0, hardMax=100,
                      get=lambda: float(first().Transparency) * 100, set=setter('Transparency', 100.0))]
+                if transparency else [])
 
     def _text(self, c, name):
         try:
