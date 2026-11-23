@@ -237,6 +237,16 @@ class PropertiesModel(Model):
             return dict(base, kind='vector', decimals=3 if kind == 'Direction' else 2,
                         get=lambda: list(getattr(c, name)),
                         set=put(lambda v: App.Vector(*[float(x) for x in v])))
+        if ptype.startswith('Materials::'):
+            # the physical material (steel, PLA...): its name, then the colour the
+            # object is shown with (Shape Appearance of the view)
+            rows = [dict(base, kind='native', readOnly=True, button='Edit', action='native:' + name,
+                         get=lambda: getattr(getattr(c, name), 'Name', '') or '')]
+            vo = getattr(self.target, 'ViewObject', None)
+            if vo is not None and 'ShapeAppearance' in vo.PropertiesList:
+                rows += self._material(vo, 'ShapeAppearance', 'Appearance', dict(base), True,
+                                       self._putter(vo, 'Appearance', recompute=False))
+            return rows
         if kind in ('Material', 'MaterialList'):
             return self._material(c, name, label, base, kind == 'MaterialList', put)
         if kind in ('Link', 'LinkChild', 'LinkGlobal', 'LinkHidden'):
@@ -254,6 +264,22 @@ class PropertiesModel(Model):
         if kind == 'PartShape' or ptype.endswith('PropertyPartShape'):
             return dict(base, kind='text', readOnly=True, get=lambda: self._text(c, name))
         return native(lambda: self._text(c, name))
+
+    def _putter(self, c, label, recompute):
+        doc = self.target.Document
+
+        def put(convert=lambda v: v):
+            def setter(v):
+                v = convert(v)
+                doc.openTransaction('Edit %s' % label)
+                try:
+                    setattr(c, setter.name, v)
+                finally:
+                    doc.commitTransaction()
+                if recompute:
+                    doc.recompute()
+            return setter
+        return put
 
     def _material(self, c, name, label, base, many, put):
         """Colour (with quick picks) and shininess of a material; for a list (Shape
@@ -275,21 +301,32 @@ class PropertiesModel(Model):
                     setattr(m, field, float(value))
             return mats if many else mats[0]
 
-        def setter(field):
-            raw = put(lambda v: change(field, v))
+        def setter(field, scale=1.0):
+            raw = put(lambda v: change(field, float(v) / scale if field != 'DiffuseColor' else v))
+            raw.name = name
 
             def go(v):
                 current = first()
-                old = hex_color(current.DiffuseColor) if field == 'DiffuseColor' else float(getattr(current, field))
-                if (field == 'DiffuseColor' and old == v) or (field != 'DiffuseColor' and abs(old - float(v)) < 1e-6):
+                if field == 'DiffuseColor':
+                    if hex_color(current.DiffuseColor) == v:
+                        return
+                elif abs(float(getattr(current, field)) * scale - float(v)) < 1e-6:
                     return
                 raw(v)
             return go
-        return [dict(base, name=name + '@color', label='%s · color' % label, kind='color', presets=presets,
+        pre = '' if name == 'ShapeAppearance' else label.replace(' Material', '') + ' '
+
+        def lab(word):
+            text = pre + word
+            return text[0].upper() + text[1:]
+        return [dict(base, name=name + '@color', label=lab('color'), kind='color', presets=presets,
                      get=lambda: hex_color(first().DiffuseColor), set=setter('DiffuseColor')),
-                dict(base, name=name + '@shine', label='%s · shininess' % label, kind='number',
+                dict(base, name=name + '@shine', label=lab('shininess'), kind='number',
                      min=0, max=1, step=0.05, decimals=2, hardMin=0, hardMax=1,
-                     get=lambda: float(first().Shininess), set=setter('Shininess'))]
+                     get=lambda: float(first().Shininess), set=setter('Shininess')),
+                dict(base, name=name + '@transp', label=lab('transparency'), kind='number',
+                     min=0, max=100, step=1, decimals=0, unit='%', hardMin=0, hardMax=100,
+                     get=lambda: float(first().Transparency) * 100, set=setter('Transparency', 100.0))]
 
     def _text(self, c, name):
         try:

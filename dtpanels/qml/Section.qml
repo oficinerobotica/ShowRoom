@@ -81,12 +81,21 @@ Rectangle {
                 font.pixelSize: Math.round(12 * th.s); font.family: th.family
                 font.bold: true
             }
-            Text {
+            // collapse triangle, drawn so that it sits on the title's centre line
+            Canvas {
+                id: tri
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: sec.open ? "▾" : "▸"
-                color: sec.th.muted
-                font.pixelSize: Math.round(14 * th.s); font.family: th.family
+                width: Math.round(12 * th.s); height: Math.round(12 * th.s)
+                rotation: sec.open ? 0 : -90
+                Behavior on rotation { NumberAnimation { duration: 120 } }
+                property color c: sec.th.muted
+                onCChanged: requestPaint()
+                onPaint: {
+                    var g = getContext("2d"), w = width, h = height
+                    g.reset(); g.fillStyle = c
+                    g.beginPath(); g.moveTo(w * 0.1, h * 0.25); g.lineTo(w * 0.9, h * 0.25); g.lineTo(w * 0.5, h * 0.8); g.closePath(); g.fill()
+                }
             }
             MouseArea { anchors.fill: parent; onClicked: sec.open = !sec.open }
         }

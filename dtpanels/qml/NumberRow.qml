@@ -82,8 +82,8 @@ Item {
         y: Math.round(30 * th.s)
         height: Math.round(16 * th.s)
         property real ratio: Math.max(0, Math.min(1, (row.value - p.min) / (p.max - p.min)))
-        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 3; radius: 2; color: th.line }
-        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * track.ratio; height: 3; radius: 2; color: th.accent }
+        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: Math.max(4, Math.round(4 * th.s)); radius: height / 2; color: th.line }
+        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * track.ratio; height: Math.max(4, Math.round(4 * th.s)); radius: height / 2; color: th.accent }
         Rectangle {
             x: (parent.width - width) * track.ratio
             anchors.verticalCenter: parent.verticalCenter

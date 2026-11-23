@@ -151,6 +151,7 @@ class FloatingPanel(QtWidgets.QFrame):
         lay.setContentsMargins(EDGE, EDGE + 2, EDGE, EDGE)
         lay.setSpacing(EDGE + 2)
         self.header = _Header(self)
+        self.header.setCursor(QtCore.Qt.ArrowCursor)
         hl = QtWidgets.QHBoxLayout(self.header)
         hl.setContentsMargins(6, 4, 6, 4)
         hl.setSpacing(6)
@@ -181,6 +182,8 @@ class FloatingPanel(QtWidgets.QFrame):
 
         self.card = QtWidgets.QFrame(self)
         self.card.setObjectName('SRCard')
+        # the resize cursors belong to the border only, never to what is inside
+        self.card.setCursor(QtCore.Qt.ArrowCursor)
         # its contents' minimum height must not stop the panel from rolling up smoothly
         self.card.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Ignored)
         cl = QtWidgets.QVBoxLayout(self.card)
@@ -377,6 +380,7 @@ class FloatingPanel(QtWidgets.QFrame):
         obj = sel[0] if sel else None
         if obj is not self.prop_model.target or self.prop_model.tab != self.tab:
             self.prop_model.set_target(obj, self.tab if self.tab in ('Data', 'View') else None)
+            self.prop_bridge._error = ''          # a message is about the object it came from
         self.prop_bridge.refresh()
         view = self.qml_page.widget() if self.qml_page is not None else None
         if view is not None:        # a much shorter page must not stay blank
@@ -703,7 +707,10 @@ class FloatingPanel(QtWidgets.QFrame):
                 shape = QtCore.Qt.SizeHorCursor
             elif e:
                 shape = QtCore.Qt.SizeVerCursor
-            self.setCursor(shape)
+            if shape == QtCore.Qt.ArrowCursor:
+                self.unsetCursor()
+            else:
+                self.setCursor(shape)
             return
         e, start, g = self._resize
         d = ev.globalPos() - start
