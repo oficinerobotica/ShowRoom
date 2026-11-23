@@ -43,7 +43,7 @@ Rectangle {
     // ---------------------------------------------------------------- title bar
     Item {
         id: titleBar
-        width: parent.width; height: Math.round(56 * s)
+        width: parent.width; height: Math.round(46 * s)
         MouseArea {
             anchors.fill: parent
             cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
@@ -71,14 +71,14 @@ Rectangle {
         Column {
             anchors.left: gear.right; anchors.leftMargin: Math.round(12 * s)
             anchors.verticalCenter: parent.verticalCenter
-            Text { text: "ShowRoom preferences"; color: th.text; font.pixelSize: Math.round(15 * s); font.bold: true; font.family: th.family }
-            Text { text: "Saved for every document · Esc closes"; color: th.muted; font.pixelSize: Math.round(11 * s); font.family: th.family }
+            Text { text: "ShowRoom preferences"; color: th.text; font.pixelSize: Math.round(13 * s); font.bold: true; font.family: th.family }
+            Text { text: "Saved for every document · Esc closes"; color: th.muted; font.pixelSize: Math.round(10 * s); font.family: th.family }
         }
         Rectangle {     // search
             id: searchBox
             anchors.right: closeBtn.left; anchors.rightMargin: Math.round(10 * s)
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.round(280 * s); height: Math.round(34 * s); radius: Math.round(10 * s)
+            width: Math.round(220 * s); height: Math.round(28 * s); radius: Math.round(8 * s)
             color: th.field
             border.width: search.activeFocus ? 1 : 0; border.color: th.accent
             Rectangle {     // focus halo
@@ -121,7 +121,7 @@ Rectangle {
     Item {
         id: footer
         anchors.bottom: parent.bottom
-        width: parent.width; height: Math.round(60 * s)
+        width: parent.width; height: Math.round(48 * s)
         Rectangle { width: parent.width; height: 1; color: th.line; opacity: 0.6 }
         Rectangle {     // unsaved changes
             id: pill
@@ -150,13 +150,13 @@ Rectangle {
         id: side
         anchors.right: parent.right; anchors.top: titleBar.bottom; anchors.bottom: footer.top
         anchors.rightMargin: 1
-        width: Math.round(232 * s)
+        width: Math.round(204 * s)
         color: th.card
         Rectangle { width: 1; height: parent.height; color: th.line; opacity: 0.6 }
         Rectangle {     // sliding highlight
             x: Math.round(10 * s); width: parent.width - Math.round(20 * s)
-            height: Math.round(40 * s); radius: Math.round(10 * s)
-            y: Math.round(14 * s) + root.currentIndex * Math.round(42 * s)
+            height: Math.round(32 * s); radius: Math.round(8 * s)
+            y: Math.round(10 * s) + root.currentIndex * Math.round(34 * s)
             color: th.window
             border.color: th.line; border.width: 1
             opacity: root.searching ? 0 : 1
@@ -165,13 +165,13 @@ Rectangle {
             Rectangle { x: 0; anchors.verticalCenter: parent.verticalCenter; width: Math.round(3 * s); height: parent.height * 0.5; radius: width / 2; color: th.accent }
         }
         Column {
-            y: Math.round(14 * s)
+            y: Math.round(10 * s)
             x: Math.round(10 * s); width: parent.width - Math.round(20 * s)
             spacing: Math.round(2 * s)
             Repeater {
                 model: bridge.sections
                 Item {
-                    width: parent.width; height: Math.round(40 * s)
+                    width: parent.width; height: Math.round(32 * s)
                     property bool cur: !root.searching && modelData.title === bridge.current
                     property int badge: root.searching ? root.matchesIn(modelData) : root.changedIn(modelData)
                     opacity: root.searching && badge === 0 ? 0.35 : 1
@@ -179,7 +179,7 @@ Rectangle {
                     Image {
                         id: ic
                         x: Math.round(12 * s); anchors.verticalCenter: parent.verticalCenter
-                        width: Math.round(18 * s); height: width
+                        width: Math.round(16 * s); height: width
                         source: bridge.icons[modelData.title] ? (cur ? bridge.icons[modelData.title].active : bridge.icons[modelData.title].normal) : ""
                     }
                     Text {
@@ -188,7 +188,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.title; elide: Text.ElideRight
                         color: cur ? th.accent : th.text
-                        font.pixelSize: Math.round(13 * s); font.family: th.family; font.bold: cur
+                        font.pixelSize: Math.round(12 * s); font.family: th.family; font.bold: cur
                     }
                     Rectangle {
                         id: bdg
@@ -214,25 +214,25 @@ Rectangle {
         boundsBehavior: Flickable.StopAtBounds
         Column {
             id: page
-            x: Math.round(24 * s); y: Math.round(20 * s)
-            width: flick.width - Math.round(48 * s)
+            x: Math.round(16 * s); y: Math.round(14 * s)
+            width: flick.width - Math.round(32 * s)
             spacing: Math.round(12 * s)
 
             Row {       // page title
                 spacing: Math.round(12 * s)
-                Text { text: root.searching ? "Results" : bridge.current; color: th.text; font.pixelSize: Math.round(21 * s); font.bold: true; font.family: th.family }
-                Text { y: Math.round(7 * s); text: root.searching ? "in every section" : (bridge.hints[bridge.current] || ""); color: th.muted; font.pixelSize: Math.round(12 * s); font.family: th.family }
+                Text { text: root.searching ? "Results" : bridge.current; color: th.text; font.pixelSize: Math.round(17 * s); font.bold: true; font.family: th.family }
+                Text { y: Math.round(5 * s); text: root.searching ? "in every section" : (bridge.hints[bridge.current] || ""); color: th.muted; font.pixelSize: Math.round(12 * s); font.family: th.family }
             }
 
             // live preview of the default scene
             Rectangle {
                 visible: !root.searching && bridge.current === "Default scene"
-                width: parent.width; height: Math.round(150 * s); radius: Math.round(12 * s)
+                width: parent.width; height: Math.round(120 * s); radius: Math.round(10 * s)
                 color: th.card
                 Rectangle {
                     id: stage
                     x: Math.round(14 * s); anchors.verticalCenter: parent.verticalCenter
-                    width: Math.round(220 * s); height: Math.round(120 * s); radius: Math.round(9 * s)
+                    width: Math.round(170 * s); height: Math.round(96 * s); radius: Math.round(8 * s)
                     color: th.field; clip: true
                     Canvas {        // ground grid
                         anchors.fill: parent
@@ -261,8 +261,8 @@ Rectangle {
                     }
                     Rectangle {
                         id: cube
-                        x: Math.round(76 * s); y: Math.round(26 * s)
-                        width: Math.round(70 * s); height: Math.round(62 * s); radius: Math.round(8 * s)
+                        x: Math.round(56 * s); y: Math.round(18 * s)
+                        width: Math.round(56 * s); height: Math.round(50 * s); radius: Math.round(8 * s)
                         color: "#8fa8c8"
                         Rectangle {     // ambient occlusion settling at the bottom
                             anchors.fill: parent; radius: parent.radius

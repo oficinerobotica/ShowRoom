@@ -123,7 +123,10 @@ class PrefsWindow(QtWidgets.QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         self.view = B.QtQuickWidgets.QQuickWidget(self)
         self.view.setResizeMode(B.QtQuickWidgets.QQuickWidget.SizeRootObjectToView)
-        self.view.setClearColor(QtGui.QColor(th['window']))
+        # transparent outside the rounded window: the corners show FreeCAD, not a square
+        self.view.setAttribute(QtCore.Qt.WA_AlwaysStackOnTop, True)
+        self.view.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+        self.view.setClearColor(QtCore.Qt.transparent)
         self.view.rootContext().setContextProperty('bridge', self.bridge)
         self.view.setSource(QtCore.QUrl.fromLocalFile(os.path.join(B.QML, 'PrefsWindow.qml')))
         if self.view.status() != B.QtQuickWidgets.QQuickWidget.Ready:
@@ -131,20 +134,14 @@ class PrefsWindow(QtWidgets.QWidget):
             raise RuntimeError(errors or 'QML not ready')
         lay.addWidget(self.view)
         s = th['s']
-        w, h = int(900 * s), int(620 * s)
-        w, h = min(w, mw.width() - 40), min(h, mw.height() - 80)
+        w, h = int(720 * s), int(500 * s)
+        w, h = min(w, int(mw.width() * 0.7)), min(h, int(mw.height() * 0.75))
         self.resize(w, h)
         self.move((mw.width() - w) // 2, max(40, (mw.height() - h) // 2))
         QtGui.QShortcut(QtGui.QKeySequence('Escape'), self, activated=self.close_window)
         QtGui.QShortcut(QtGui.QKeySequence('Ctrl+F'), self,
                         activated=lambda: self.view.rootObject().focusSearch())
         mw.installEventFilter(self)
-
-    def resizeEvent(self, ev):
-        path = QtGui.QPainterPath()
-        path.addRoundedRect(QtCore.QRectF(self.rect()), 14, 14)
-        self.setMask(QtGui.QRegion(path.toFillPolygon().toPolygon()))
-        super().resizeEvent(ev)
 
     def move_by(self, dx, dy):
         mw = self.parentWidget()
