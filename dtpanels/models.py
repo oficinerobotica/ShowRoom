@@ -516,16 +516,33 @@ class GridModel(Model):
 
 
 # ----------------------------------------------------------------------------- textures
-def bundled_textures():
+IMAGE_EXT = ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp')
+
+
+def _images_in(folder):
     out = []
     try:
-        names = sorted(n for n in os.listdir(TEXTURES_DIR) if n.lower().endswith(('.jpg', '.png')))
+        names = sorted(n for n in os.listdir(folder) if n.lower().endswith(IMAGE_EXT))
     except OSError:
         names = []
     for name in names:
-        stem = os.path.splitext(name)[0]
-        label = ''.join((' ' + ch if ch.isupper() and i else ch) for i, ch in enumerate(stem))
-        out.append((os.path.join(TEXTURES_DIR, name), label))
+        stem = os.path.splitext(name)[0].replace('_', ' ').replace('-', ' ')
+        label = ''.join((' ' + ch if ch.isupper() and i and stem[i - 1].islower() else ch)
+                        for i, ch in enumerate(stem))
+        out.append((os.path.join(folder, name), label))
+    return out
+
+
+def user_texture_dir():
+    return App.ParamGet('User parameter:BaseApp/Preferences/Mod/ShowRoom').GetString('UserTextureDir', '')
+
+
+def bundled_textures():
+    """ShowRoom's textures, then the ones in the user's own folder (Settings, Textures)."""
+    out = _images_in(TEXTURES_DIR)
+    folder = user_texture_dir()
+    if folder and os.path.isdir(folder) and os.path.normpath(folder) != os.path.normpath(TEXTURES_DIR):
+        out += _images_in(folder)
     return out
 
 
@@ -909,6 +926,9 @@ class SettingsModel(Model):
               'Properties panel', tip='Pad, Pocket, sketch editing...'),
             P('DefTileSize', 'Texture tile size (0 = from the object)', 'number', 'Textures',
               min=0, max=200, step=1, unit='mm', decimals=0, hardMin=0),
+            P('UserTextureDir', 'Your texture folder', 'text', 'Textures', button='Choose…',
+              action='browse:UserTextureDir',
+              tip='Its images (jpg, png, webp...) appear in the texture gallery after the bundled ones'),
             P('WarnDisplayTools', 'Warn when Display Tools is installed', 'bool', 'Maintenance'),
         ]
 
@@ -925,6 +945,16 @@ class SettingsModel(Model):
 
     def hint(self):
         return 'OK saves the settings; Cancel leaves them as they were.'
+
+    def browse(self, name):
+        if name == 'UserTextureDir':
+            import FreeCADGui
+            from PySide import QtWidgets
+            folder = QtWidgets.QFileDialog.getExistingDirectory(
+                FreeCADGui.getMainWindow(), 'Your texture folder', self.values.get(name) or os.path.expanduser('~'))
+            if folder:
+                self.values[name] = folder
+        return None
 
     def trigger(self, name):
         prefs = self.prefs

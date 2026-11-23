@@ -208,9 +208,17 @@ class FloatingPanel(QtWidgets.QFrame):
         self.timer = QtCore.QTimer(self)
         self.timer.setInterval(120)
         self.timer.timeout.connect(self._tick)
+        # the blurred background: grabbing the 3D view is costly, so it is done
+        # only after something changed (camera, panel moved) and has settled,
+        # plus a slow refresh for everything else (lights, colours...)
         self.blur_timer = QtCore.QTimer(self)
-        self.blur_timer.setInterval(400)
-        self.blur_timer.timeout.connect(self._grab_backdrop)
+        self.blur_timer.setInterval(2500)
+        self.blur_timer.timeout.connect(self.request_backdrop)
+        self.blur_soon = QtCore.QTimer(self)
+        self.blur_soon.setSingleShot(True)
+        self.blur_soon.setInterval(250)
+        self.blur_soon.timeout.connect(self._grab_backdrop)
+        self._cam_sensor = self._cam_view = None
         host.installEventFilter(self)
 
     # -------------------------------------------------------------- set up
@@ -302,6 +310,8 @@ class FloatingPanel(QtWidgets.QFrame):
             self.prop_bridge.stop()
         self.timer.stop()
         self.blur_timer.stop()
+        self.blur_soon.stop()
+        self._watch_camera(None)
         self.host.removeEventFilter(self)
         for b in (self.props, self.tasks):
             if b is not None:
@@ -455,7 +465,7 @@ class FloatingPanel(QtWidgets.QFrame):
         self.timer.start()
         if prefs.get('PanelBlur'):
             self.blur_timer.start()
-            self._grab_backdrop()
+            self.request_backdrop()
         else:
             self.blur_timer.stop()
             self._backdrop = None
@@ -623,7 +633,7 @@ class FloatingPanel(QtWidgets.QFrame):
         x = max(0, min(p.x(), self.host.width() - self.width()))
         y = max(0, min(p.y(), self.host.height() - self.height()))
         self.move(x, y)
-        self._grab_backdrop()
+        self.request_backdrop()
 
     def save_geometry(self):
         """Only after the user moved or resized it.  A panel on the right half is
@@ -732,14 +742,43 @@ class FloatingPanel(QtWidgets.QFrame):
         if self._resize is not None:
             self._resize = None
             self.save_geometry()
-            self._grab_backdrop()
+            self.request_backdrop()
 
     # -------------------------------------------------------------- blur
+    def request_backdrop(self):
+        """A new blurred background once things have been still for a moment."""
+        if prefs.get('PanelBlur') and self.isVisible() and not self.hidden_side:
+            self.blur_soon.start()
+
+    def _watch_camera(self, view):
+        """Re-blur after the camera moved (debounced), never during the move."""
+        if view is self._cam_view:
+            return
+        if self._cam_sensor is not None:
+            try:
+                self._cam_sensor.detach()
+            except Exception:
+                pass
+        self._cam_sensor, self._cam_view = None, view
+        if view is None:
+            return
+        try:
+            from pivy import coin
+            self._cam_sensor = coin.SoNodeSensor(lambda *a: self.request_backdrop(), None)
+            self._cam_sensor.attach(view.getCameraNode())
+        except Exception:
+            self._cam_sensor = None
+
     def _grab_backdrop(self):
         if not prefs.get('PanelBlur') or not self.isVisible() or self.hidden_side:
             return
+        if QtWidgets.QApplication.mouseButtons() != QtCore.Qt.NoButton:
+            self.blur_soon.start()          # still navigating or dragging: later
+            return
         try:
-            view = Gui.ActiveDocument.ActiveView.graphicsView()
+            active = Gui.ActiveDocument.ActiveView
+            self._watch_camera(active)
+            view = active.graphicsView()
             src = view.viewport() if hasattr(view, 'viewport') else view
             grab = src.grabFramebuffer() if hasattr(src, 'grabFramebuffer') else src.grab().toImage()
             ratio = grab.width() / max(1, src.width())
@@ -747,7 +786,10 @@ class FloatingPanel(QtWidgets.QFrame):
                 src.mapFromGlobal(self.mapToGlobal(QtCore.QPoint(0, 0)))
             rect = QtCore.QRect(top_left * ratio, self.size() * ratio)
             img = grab.copy(rect)
-            small = img.scaled(max(1, img.width() // 12), max(1, img.height() // 12),
+            # a cheap first reduction, then the smooth ones on a small picture
+            img = img.scaled(max(1, img.width() // 4), max(1, img.height() // 4),
+                             QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.FastTransformation)
+            small = img.scaled(max(1, img.width() // 3), max(1, img.height() // 3),
                                QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
             small = small.scaled(max(1, small.width() // 2 * 2), max(1, small.height() // 2 * 2),
                                  QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)

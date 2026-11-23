@@ -33,7 +33,7 @@ DEFAULTS = {
     # floating properties panel
     'FloatingPanel': False, 'PanelVisibility': 'Fixed', 'PanelBlur': True, 'AutoTask': True,
     'PanelGeometry': '', 'PanelEasing': 'OutQuart', 'PanelAnimMs': 200, 'KeepOpenOnTask': True,
-    'QmlProperties': True, 'SectionStyle': 'Flat',
+    'QmlProperties': True, 'SectionStyle': 'Flat', 'UserTextureDir': '',
     # maintenance
     'WarnDisplayTools': True,
 }

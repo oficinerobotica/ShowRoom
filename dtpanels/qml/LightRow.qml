@@ -66,14 +66,17 @@ Item {
         height: Math.round(16 * th.s)
         opacity: row.value.on ? 1.0 : 0.45
         property real ratio: Math.max(0, Math.min(1, row.value.intensity || 0))
-        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 3; radius: 2; color: th.line }
-        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * track.ratio; height: 3; radius: 2; color: th.accent }
+        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: Math.max(6, Math.round(6 * th.s)); radius: height / 2; color: th.line }
+        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * track.ratio; height: Math.max(6, Math.round(6 * th.s)); radius: height / 2; color: th.accent }
         Rectangle {
             x: (parent.width - width) * track.ratio
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.round(12 * th.s); height: Math.round(12 * th.s); radius: Math.round(6 * th.s)
-            color: ma.pressed ? th.accent : th.text
-            border.width: 2; border.color: th.accent
+            width: Math.round(18 * th.s); height: width; radius: width / 2
+            color: th.accent
+            border.width: Math.max(2, Math.round(3 * th.s)); border.color: "white"
+            scale: ma.pressed ? 1.15 : 1.0
+            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack } }
+            Rectangle { z: -1; anchors.centerIn: parent; anchors.verticalCenterOffset: 1; width: parent.width + 2; height: width; radius: width / 2; color: Qt.rgba(0, 0, 0, 0.18) }
         }
         MouseArea {
             id: ma
