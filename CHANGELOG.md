@@ -1,26 +1,47 @@
 # Changelog
 
-## ShowRoom 1.3.3
-
-- fx opens FreeCAD's own expression editor (with its suggestions); one undo step, nothing when cancelled.
-
-## ShowRoom 1.3.2
-
-- Property editor: materials (Shape Appearance colour with quick picks, shininess), vectors and links edited in place; Edit opens FreeCAD's editor on that property with a Back button.
-
-## ShowRoom 1.3.1
-
-- Property editor: search field, fx button to bind a number to an expression, placement as position + yaw/pitch/roll rows.
-- Floating panel hidden over the Start page.
-- Dynamic grid left out of the thumbnail saved in the file.
-
-## ShowRoom 1.3.0
-
-- ShowRoom's own Data / View editor in the floating panel (QML): switches, choices, numbers with units, colours, sliders and text, grouped in cards; placement, links and expressions open FreeCAD's editor.
-
 ## ShowRoom 1.2.0
 
-- Floating properties panel: FreeCAD's property editor and task view in a panel over the 3D view, with Data / View / Task tabs, blurred background, resizing and fixed / rolled up / autohide visibility; Autotask opens the Task tab when a task starts.
+New
+- Floating properties panel over the 3D view, with Data / View / Task tabs. FreeCAD's own
+  task panel lives in the Task tab; Autotask switches to it when a task starts (Pad, Pocket,
+  sketch editing) and back to Data when it ends.
+- ShowRoom's own Data / View editor (QML): switches, choices, numbers with units, colours
+  with quick picks, sliders, vectors, links as menus, placement as position + yaw/pitch/roll,
+  search field, fx button that opens FreeCAD's expression editor. What it cannot edit opens
+  FreeCAD's editor on that property, with a Back button.
+- Appearance in the Data tab (colour, shininess, transparency); for a feature inside a Body
+  it edits the Body, which is what is shown.
+- Panel visibility: fixed, rolled up (opens on hover) or autohide (slides to the nearer
+  screen edge, comes back on touching it, on a selection or when a task opens), with
+  animation curve and time in the settings; Pin keeps it open during tasks.
+- Resizable from every edge, remembers its place (anchored to its side of the window),
+  optional blurred background, hidden over the Start page.
+- Preferences in a floating QML window with the sections on the right: search across all
+  settings, live preview of the default scene, live preview of the animation curve, dots on
+  settings changed from the default (click to reset), count of pending changes,
+  Apply / OK / Cancel.
+- Section style for all ShowRoom panels: Flat, Inset, Outset, Outline.
+- Your own texture folder (Settings, Textures), shown in the gallery after the bundled ones.
+- Sliders redrawn (thicker track, ringed thumb); they follow the mouse at once and a drag
+  is a single undo step.
+
+Fixed
+- Windows: QML panels were empty (Qt Quick now draws with OpenGL, widget panels otherwise).
+- The view turned black on some drivers during feature operations: the shadow catcher
+  waits while another workbench's task panel is open.
+- Toggling "Show final result" / "Show preview overlay" in a feature panel made the whole
+  view darker or lighter: the model's size is not measured again while the panel is open.
+- Transparency seemed to act only at the start of the slider: see-through objects are left
+  out of the ambient occlusion pass.
+- A new appearance of a selected object (or face) only showed after the next click.
+- The light panel no longer covers the floating panel; rounded corners without square
+  edges; the dynamic grid is left out of the thumbnail saved in the file.
+- Choice rows with fewer labels than values (files from older versions).
+
+Internal
+- The sketch / feature-panel pauses of the effects are gathered in SceneFX/pauses.py.
+- Unused helpers removed.
 
 ## ShowRoom 1.1.7
 
