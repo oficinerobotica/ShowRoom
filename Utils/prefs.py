@@ -32,7 +32,7 @@ DEFAULTS = {
     'FontScale': 1.0, 'UseQml': True, 'DefTileSize': 0.0,
     # floating properties panel
     'FloatingPanel': False, 'PanelVisibility': 'Fixed', 'PanelBlur': True, 'AutoTask': True,
-    'PanelGeometry': '', 'PanelEasing': 'OutQuart', 'PanelAnimMs': 400, 'KeepOpenOnTask': True,
+    'PanelGeometry': '', 'PanelEasing': 'OutQuart', 'PanelAnimMs': 200, 'KeepOpenOnTask': True,
     'QmlProperties': True, 'SectionStyle': 'Flat',
     # maintenance
     'WarnDisplayTools': True,

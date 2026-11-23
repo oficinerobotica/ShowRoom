@@ -213,7 +213,7 @@ class FloatingPanel(QtWidgets.QFrame):
         self.setStyleSheet(
             '#SRFloatingPanel { font-family: "%(family)s"; font-size: %(px)dpx; color: %(text)s; }'
             '#SRHeader { background: transparent; }'
-            '#SRCard { background: %(card)s; border-radius: 10px; }'
+            '#SRCard { background: transparent; border-radius: 10px; }'
             '#SRHeader QPushButton { border: 1px solid %(line)s; border-radius: 7px; padding: 4px 2px; margin: 0; min-width: 0px;'
             ' color: %(text)s; background: %(field)s; }'
             '#SRHeader QPushButton:checked { background: %(accent)s; border-color: %(accent)s;'
