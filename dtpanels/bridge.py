@@ -124,16 +124,18 @@ def make_theme():
                             int(a.blue() + (b.blue() - a.blue()) * k)).name()
     usable = abs(base.lightness() - win.lightness()) > 6 and abs(base.lightness() - txt.lightness()) >= 110
     field = base.name() if usable else mix(win, txt, 0.11)
+    card = mix(win, QtGui.QColor("#000000" if dark else "#ffffff"), 0.30 if dark else 0.62)
+    field = mix(QtGui.QColor(card), txt, 0.07 if not dark else 0.1)    # fields stand out on the cards
     return dict(dark=dark, window=win.name(), text=txt.name(), s=scale, family=font.family(),
                 # sections a step lighter than the panel (darker on a dark theme)
-                card=mix(win, QtGui.QColor("#000000" if dark else "#ffffff"), 0.30 if dark else 0.45), field=field, line=mix(win, txt, 0.22),
+                card=card, field=field, line=mix(win, txt, 0.22),
                 muted=mix(win, txt, 0.6), wall=mix(win, txt, 0.3),
                 accent=accent.name(), accentText="#ffffff" if accent.lightness() < 150 else "#101010",
                 ok="#2e9e6b" if not dark else "#4cc38a", warn="#c98a12" if not dark else "#e6b043",
                 bad="#d6453d" if not dark else "#f0736b",
                 sectionStyle=App.ParamGet(PREFS).GetString("SectionStyle", "Flat"),
                 bevelLight=mix(win, QtGui.QColor("#ffffff"), 0.85 if not dark else 0.25),
-                bevelDark=mix(win, QtGui.QColor("#000000"), 0.35 if not dark else 0.6))
+                bevelDark=mix(win, QtGui.QColor("#000000"), 0.2 if not dark else 0.5))
 
 
 # ------------------------------------------------------------------------------- bridge

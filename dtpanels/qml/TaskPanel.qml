@@ -13,8 +13,8 @@ Item {
 
     Column {
         id: col
-        x: Math.round(8 * th.s); y: Math.round(8 * th.s)
-        width: root.width - 16
+        x: Math.round(4 * th.s); y: Math.round(6 * th.s)
+        width: root.width - 2 * Math.round(4 * th.s)
         spacing: Math.round(8 * th.s)
 
         // ---- header ----------------------------------------------------------------------

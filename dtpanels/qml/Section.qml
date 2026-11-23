@@ -83,7 +83,7 @@ Rectangle {
             Text {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: sec.open ? "−" : "+"
+                text: sec.open ? "▾" : "▸"
                 color: sec.th.muted
                 font.pixelSize: Math.round(14 * th.s); font.family: th.family
             }

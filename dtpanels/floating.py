@@ -148,7 +148,7 @@ class FloatingPanel(QtWidgets.QFrame):
         self._outside = 0
 
         lay = QtWidgets.QVBoxLayout(self)
-        lay.setContentsMargins(EDGE + 6, EDGE + 4, EDGE + 6, EDGE + 6)
+        lay.setContentsMargins(EDGE, EDGE + 2, EDGE, EDGE)
         lay.setSpacing(EDGE + 2)
         self.header = _Header(self)
         hl = QtWidgets.QHBoxLayout(self.header)
@@ -184,7 +184,7 @@ class FloatingPanel(QtWidgets.QFrame):
         # its contents' minimum height must not stop the panel from rolling up smoothly
         self.card.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Ignored)
         cl = QtWidgets.QVBoxLayout(self.card)
-        cl.setContentsMargins(4, 4, 4, 4)
+        cl.setContentsMargins(0, 0, 0, 0)
         self.stack = QtWidgets.QStackedWidget(self.card)
         cl.addWidget(self.stack)
         lay.addWidget(self.card, 1)
@@ -221,6 +221,7 @@ class FloatingPanel(QtWidgets.QFrame):
             '#SRHeader QToolButton { border: none; border-radius: 6px; color: %(muted)s;'
             ' padding: 2px 4px; font-size: %(icon)dpx; }'
             '#SRHeader QToolButton:hover { background: %(field)s; }'
+            '#SRHeader QToolButton:checked { background: transparent; border: none; }'
             '#SRCard QTreeView { background: transparent; border: none; gridline-color: %(card)s;'
             ' color: %(text)s; outline: 0; }'
             '#SRCard QTreeView::item { min-height: %(row)dpx; padding: 0 4px; border: none; }'
