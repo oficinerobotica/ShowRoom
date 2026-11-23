@@ -21,6 +21,8 @@ What it maintains in every view (FreeCAD 26.3 layout):
      |         +- view providers ...
      +- [ambient occlusion pass]     <- only while ambient occlusion is on
 """
+import math
+
 import FreeCAD
 from pivy import coin
 
@@ -274,8 +276,10 @@ def _sync_catcher(parts, settings, doc, mirrors, lights):
     existing = view_utils.find_child(outer, shadow_catcher.ROOT_NAME)
     # paused while a sketch is busy: its texture redraws the model, and Sketcher
     # rebuilds the sketch's nodes in the middle of that (crash)
-    catcher = settings.catcher and not navigation._editing
+    catcher = settings.catcher and not navigation._editing and not _feature_dialog()
     box = view_utils.scene_bound_box(parts.view, doc) if catcher else None
+    if box is not None and not all(math.isfinite(v) and abs(v) < 1e7 for v in box):
+        box = None                  # a preview or an empty shape: nothing sensible to fit
     if box is None or not ambient_occlusion.available():
         if existing is not None:
             outer.removeChild(existing)
@@ -533,7 +537,23 @@ def _foreign_dialog():
     return False
 
 
+def _feature_dialog():
+    """A task panel of another workbench is open (Pad, Thickness...).  Their
+    previews are drawn in ways the shadow catcher's extra pass of the model does
+    not survive on some drivers (the whole view turns black), so the catcher
+    alone waits for the panel to close; shadows and AO stay."""
+    import FreeCADGui
+    try:
+        if not FreeCADGui.Control.activeDialog():
+            return False
+        from dtpanels import bridge
+        return bridge.current() is None
+    except Exception:
+        return False
+
+
 _edit_timer = None
+_catcher_paused = False
 
 
 def _resync_now():
@@ -648,7 +668,7 @@ def _ao_documents():
     for doc in FreeCAD.listDocuments().values():
         try:
             settings = Settings(doc)
-            if settings.ao or settings.shadows:
+            if settings.ao or settings.shadows or settings.catcher:
                 docs.append(doc)
         except Exception:
             pass
@@ -672,8 +692,12 @@ def _watch():
     radius, on the size of the scene.  None of these can be observed from
     Python, so they are polled; nothing is touched unless something changed.
     The navigation watcher needs the current camera node too."""
+    global _catcher_paused
     if not navigation._editing and _foreign_dialog():
         _pause_for_edit()
+    if _feature_dialog() != _catcher_paused:
+        _catcher_paused = not _catcher_paused
+        _resync_now()
     docs = _ao_documents()
     if not docs:
         _watch_timer.stop()
