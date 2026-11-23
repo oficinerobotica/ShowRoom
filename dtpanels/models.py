@@ -893,6 +893,8 @@ class SettingsModel(Model):
               options=['Fixed', 'Rolled up', 'Autohide'],
               tip='Autohide: slides away, comes back when the mouse touches the screen edge '
                   'on its side, when something is selected or when a task opens'),
+            P('SectionStyle', 'Section style', 'enum', 'Panels', options=['Flat', 'Inset', 'Outset', 'Outline'],
+              tip='How the sections of the ShowRoom panels look; panels opened afterwards use it'),
             P('QmlProperties', "ShowRoom's own Data / View editor (switches, sliders)", 'bool',
               'Properties panel', tip="Off: FreeCAD's property editor"),
             P('KeepOpenOnTask', 'Keep it open while a task is open', 'bool', 'Properties panel'),

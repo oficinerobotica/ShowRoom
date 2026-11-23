@@ -129,7 +129,9 @@ def make_theme():
                 muted=mix(win, txt, 0.6), wall=mix(win, txt, 0.3),
                 accent=accent.name(), accentText="#ffffff" if accent.lightness() < 150 else "#101010",
                 ok="#2e9e6b" if not dark else "#4cc38a", warn="#c98a12" if not dark else "#e6b043",
-                bad="#d6453d" if not dark else "#f0736b")
+                bad="#d6453d" if not dark else "#f0736b",
+                sectionStyle=App.ParamGet(PREFS).GetString("SectionStyle", "Flat"),
+                light=mix(win, QtGui.QColor("#ffffff"), 0.55), shade=mix(win, QtGui.QColor("#000000"), 0.07))
 
 
 # ------------------------------------------------------------------------------- bridge
@@ -162,6 +164,7 @@ class Bridge(QtCore.QObject):
         self.model = model
         self._error = ""
         self._closed = False
+        self._collapsed = {}
         self._theme = make_theme()
         self._build()
         self._refresh_timer = QtCore.QTimer(self)
@@ -178,7 +181,8 @@ class Bridge(QtCore.QObject):
             self._params[p["name"]] = p
             title = p.get("section", "")
             if title not in index:
-                index[title] = dict(title=title, params=[], collapsed=bool(p.get("collapsed", False)))
+                index[title] = dict(title=title, params=[],
+                                    collapsed=self._collapsed.get(title, bool(p.get("collapsed", False))))
                 sections.append(index[title])
             index[title]["params"].append(_public(p))
         self._sections = sections
@@ -263,6 +267,10 @@ class Bridge(QtCore.QObject):
         except Exception as exc:
             self._error = str(exc)
         self.refresh()
+
+    @QtCore.Slot(str, bool)
+    def setCollapsed(self, title, collapsed):
+        self._collapsed[title] = collapsed
 
     @QtCore.Slot(str)
     def setFilter(self, text):

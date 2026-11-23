@@ -13,11 +13,23 @@ Rectangle {
             if (h.indexOf(section.params[i].name) < 0) n++
         return n
     }
+    property string look: th.sectionStyle || "Flat"
     visible: shown > 0
     height: visible ? body.implicitHeight + 18 : 0
     radius: Math.round(6 * th.s)
-    color: th.card
+    // Flat: a plain card; Inset: pressed into the panel; Outset: raised; Outline: a frame around it
+    color: look === "Inset" ? th.shade : look === "Outset" ? th.light : look === "Outline" ? "transparent" : th.card
+    border.width: look === "Flat" ? 0 : 1
+    border.color: look === "Inset" ? Qt.darker(th.shade, 1.12) : look === "Outset" ? th.line : th.line
     clip: true
+    onOpenChanged: bridge.setCollapsed(section.title, !open)
+    // bevel: a dark line on top for Inset, a dark line at the bottom for Outset
+    Rectangle {
+        visible: sec.look === "Inset" || sec.look === "Outset"
+        x: sec.radius; width: sec.width - 2 * sec.radius; height: 2
+        y: sec.look === "Inset" ? 1 : sec.height - 3
+        color: Qt.rgba(0, 0, 0, sec.look === "Inset" ? 0.10 : 0.08)
+    }
 
     Column {
         id: body
