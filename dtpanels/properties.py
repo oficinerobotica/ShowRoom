@@ -135,7 +135,8 @@ class PropertiesModel(Model):
             if ptype == 'App::PropertyPlacement' and expr is None and not readonly:
                 out += self._placement(c, name, group, tip)
                 continue
-            out.append(self._row(c, name, _words(name), ptype, group, tip, readonly, expr))
+            row = self._row(c, name, _words(name), ptype, group, tip, readonly, expr)
+            out += row if isinstance(row, list) else [row]
         self._last = out
         return out
 
@@ -230,7 +231,63 @@ class PropertiesModel(Model):
                         set=put(rgb), presets=[])
         if kind in ('String', 'Font'):
             return dict(base, kind='text', get=lambda: str(getattr(c, name)), set=put(str))
+        if kind in ('Vector', 'VectorDistance', 'Position', 'Direction'):
+            return dict(base, kind='vector', decimals=3 if kind == 'Direction' else 2,
+                        get=lambda: list(getattr(c, name)),
+                        set=put(lambda v: App.Vector(*[float(x) for x in v])))
+        if kind in ('Material', 'MaterialList'):
+            return self._material(c, name, label, base, kind == 'MaterialList', put)
+        if kind in ('Link', 'LinkChild', 'LinkGlobal', 'LinkHidden'):
+            objs = [o for o in doc.Objects if o is not self.target]
+
+            def get_link():
+                v = getattr(c, name)
+                return v.Name if v is not None else ''
+
+            def to_obj(v):
+                return doc.getObject(v) if v else None
+            return dict(base, kind='enum', get=get_link, set=put(to_obj),
+                        options=[''] + [o.Name for o in objs],
+                        optionLabels=['(none)'] + [o.Label for o in objs])
+        if kind == 'PartShape' or ptype.endswith('PropertyPartShape'):
+            return dict(base, kind='text', readOnly=True, get=lambda: self._text(c, name))
         return native(lambda: self._text(c, name))
+
+    def _material(self, c, name, label, base, many, put):
+        """Colour (with quick picks) and shininess of a material; for a list (Shape
+        Appearance) the change goes to every face."""
+        from dtpanels.models import SHAPE_COLORS, LINE_COLORS
+        presets = SHAPE_COLORS if 'Shape' in name else LINE_COLORS
+
+        def first():
+            v = getattr(c, name)
+            return v[0] if many else v
+
+        def change(field, value):
+            mats = [m for m in getattr(c, name)] if many else [getattr(c, name)]
+            for m in mats:
+                if field == 'DiffuseColor':
+                    alpha = m.DiffuseColor[3] if len(m.DiffuseColor) > 3 else 1.0
+                    m.DiffuseColor = rgb(value) + (alpha,)
+                else:
+                    setattr(m, field, float(value))
+            return mats if many else mats[0]
+
+        def setter(field):
+            raw = put(lambda v: change(field, v))
+
+            def go(v):
+                current = first()
+                old = hex_color(current.DiffuseColor) if field == 'DiffuseColor' else float(getattr(current, field))
+                if (field == 'DiffuseColor' and old == v) or (field != 'DiffuseColor' and abs(old - float(v)) < 1e-6):
+                    return
+                raw(v)
+            return go
+        return [dict(base, name=name + '@color', label='%s · color' % label, kind='color', presets=presets,
+                     get=lambda: hex_color(first().DiffuseColor), set=setter('DiffuseColor')),
+                dict(base, name=name + '@shine', label='%s · shininess' % label, kind='number',
+                     min=0, max=1, step=0.05, decimals=2, hardMin=0, hardMax=1,
+                     get=lambda: float(first().Shininess), set=setter('Shininess'))]
 
     def _text(self, c, name):
         try:

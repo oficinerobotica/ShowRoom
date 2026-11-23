@@ -72,7 +72,8 @@ Rectangle {
 
         Item {
             width: parent.width
-            height: Math.round(24 * th.s)
+            visible: sec.section.title !== ""
+            height: visible ? Math.round(24 * th.s) : 0
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: sec.section.title

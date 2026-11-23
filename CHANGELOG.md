@@ -1,5 +1,9 @@
 # Changelog
 
+## ShowRoom 1.3.2
+
+- Property editor: materials (Shape Appearance colour with quick picks, shininess), vectors and links edited in place; Edit opens FreeCAD's editor on that property with a Back button.
+
 ## ShowRoom 1.3.1
 
 - Property editor: search field, fx button to bind a number to an expression, placement as position + yaw/pitch/roll rows.

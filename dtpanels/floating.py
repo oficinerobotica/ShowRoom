@@ -185,6 +185,12 @@ class FloatingPanel(QtWidgets.QFrame):
         self.card.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Ignored)
         cl = QtWidgets.QVBoxLayout(self.card)
         cl.setContentsMargins(0, 0, 0, 0)
+        self.back = QtWidgets.QPushButton('◂  Back to the ShowRoom editor', self.card)
+        self.back.setObjectName('SRBack')
+        self.back.setCursor(QtCore.Qt.PointingHandCursor)
+        self.back.clicked.connect(lambda: self.show_tab(self.tab))
+        self.back.hide()
+        cl.addWidget(self.back)
         self.stack = QtWidgets.QStackedWidget(self.card)
         cl.addWidget(self.stack)
         lay.addWidget(self.card, 1)
@@ -222,6 +228,8 @@ class FloatingPanel(QtWidgets.QFrame):
             ' padding: 2px 4px; font-size: %(icon)dpx; }'
             '#SRHeader QToolButton:hover { background: %(field)s; }'
             '#SRHeader QToolButton:checked { background: transparent; border: none; }'
+            '#SRBack { border: none; border-radius: 7px; padding: 5px 8px; margin-bottom: 4px;'
+            ' background: %(accent)s; color: %(accentText)s; font-weight: bold; text-align: left; }'
             '#SRCard QTreeView { background: transparent; border: none; gridline-color: %(card)s;'
             ' color: %(text)s; outline: 0; }'
             '#SRCard QTreeView::item { min-height: %(row)dpx; padding: 0 4px; border: none; }'
@@ -309,6 +317,7 @@ class FloatingPanel(QtWidgets.QFrame):
     # -------------------------------------------------------------- tabs
     def show_tab(self, name, native=False):
         self.tab = name
+        self.back.setVisible(native and name in ('Data', 'View') and self.qml_page is not None)
         for n, b in self.buttons.items():
             b.setChecked(n == name)
         if name == 'Task':
@@ -368,10 +377,27 @@ class FloatingPanel(QtWidgets.QFrame):
         if obj is not self.prop_model.target or self.prop_model.tab != self.tab:
             self.prop_model.set_target(obj, self.tab if self.tab in ('Data', 'View') else None)
         self.prop_bridge.refresh()
+        view = self.qml_page.widget() if self.qml_page is not None else None
+        if view is not None:        # a much shorter page must not stay blank
+            QtCore.QTimer.singleShot(60, view.update)
 
     def _open_native(self, name):
-        """Placement, links, expressions...: FreeCAD's own editor; the tab button comes back."""
-        QtCore.QTimer.singleShot(0, lambda: self.show_tab(self.tab, native=True))
+        """What the ShowRoom editor cannot edit: FreeCAD's own editor, on that property,
+        with a button to come back."""
+        def go():
+            self.show_tab(self.tab, native=True)
+            from dtpanels.properties import _words
+            for tree in self.props.widget.findChildren(QtWidgets.QTreeView):
+                if not tree.isVisible():
+                    continue
+                model = tree.model()
+                hits = model.match(model.index(0, 0), QtCore.Qt.DisplayRole, _words(name), 1,
+                                   QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive)
+                if hits:
+                    tree.setCurrentIndex(hits[0])
+                    tree.expand(hits[0])
+                    tree.scrollTo(hits[0], QtWidgets.QAbstractItemView.PositionAtTop)
+        QtCore.QTimer.singleShot(0, go)
 
     def clicked_tab(self, name):
         if self.mode() == 'Rolled up' and not self.rolled and name == self.tab:
