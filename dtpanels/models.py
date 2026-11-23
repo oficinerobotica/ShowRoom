@@ -510,10 +510,8 @@ class GridModel(Model):
 
     def trigger(self, name):
         if name == 'fit':
-            _, size, _ = scene_extent(self.doc)
-            if size > 0:
-                self.obj.Size = int(nice(size * 1.5))
-                self.obj.Spacing = max(1, int(nice(size * 1.5) / 20))
+            from HelperTools import dynamic_grid
+            dynamic_grid.fit_to_model(self.obj)
         return None
 
 

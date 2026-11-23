@@ -140,8 +140,12 @@ class ViewProviderDynamicGrid:
         holder.addChild(self.transform)
         holder.addChild(self.geometry)
 
+        # off while a sketch is edited: lines of the grid among the sketch's are confusing
+        self.edit_switch = coin.SoSwitch()
+        self.edit_switch.whichChild = coin.SO_SWITCH_NONE if _sketch_in_edit else coin.SO_SWITCH_ALL
+        self.edit_switch.addChild(holder)
         self.root = coin.SoSeparator()
-        self.root.addChild(holder)
+        self.root.addChild(self.edit_switch)
         vobj.addDisplayMode(self.root, self.displayMode)
 
         self.rebuildGrid()
@@ -152,6 +156,10 @@ class ViewProviderDynamicGrid:
 
     def attached(self):
         return getattr(self, 'geometry', None) is not None
+
+    def set_sketching(self, on):
+        if getattr(self, 'edit_switch', None) is not None:
+            self.edit_switch.whichChild = coin.SO_SWITCH_NONE if on else coin.SO_SWITCH_ALL
 
     # ------------------------------------------------------------- geometry
     def gridExtent(self):
@@ -307,8 +315,12 @@ class ViewProviderDynamicGrid:
             self.updateGridLocation()
         elif prop in ('Color', 'GroundColor'):
             self.updateColor()
-        elif prop in ('Size', 'Spacing', 'Style'):
+        elif prop in ('Size', 'Spacing'):
             self.rebuildGrid()
+        elif prop == 'Style':
+            self.rebuildGrid()
+            if not obj.Document.Restoring:
+                fit_to_model(obj)       # the rose sits closer to the model than the grid
         elif prop == 'GroundPlane':
             self.updateGround()
         elif prop in ('Dynamic', 'ZOffset', 'CenterOnScene'):
@@ -514,6 +526,41 @@ def ensure_hooks():
     _observer = _SceneObserver()
     FreeCAD.addDocumentObserver(_observer)
 
+    global _edit_observer
+    _edit_observer = _EditObserver()
+    FreeCADGui.addDocumentObserver(_edit_observer)
+
+
+def _nice(value, steps=(1, 2, 5, 10)):
+    """Round up to a round number: 1, 2 or 5 times a power of ten by default."""
+    if value <= 0:
+        return 1.0
+    power = 10 ** math.floor(math.log10(value))
+    for step in steps:
+        if value <= step * power + 1e-9:
+            return step * power
+    return 10 * power
+
+
+def fit_to_model(grid):
+    """Size and spacing from the model on screen: the grid reaches well beyond it,
+    the compass rose is a circle just around it."""
+    view = view_utils.first_view(grid.Document)
+    box = view_utils.scene_bound_box(view, grid.Document) if view is not None else None
+    if box is None:
+        return False
+    size = ((box[3] - box[0]) ** 2 + (box[4] - box[1]) ** 2 + (box[5] - box[2]) ** 2) ** 0.5
+    if size <= 0:
+        return False
+    rose = getattr(grid, 'Style', 'Grid') == 'Compass rose'
+    if rose:        # a circle just around the model (its diagonal), finely rounded
+        side = int(_nice(size, (1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10)))
+    else:
+        side = int(_nice(size * 1.5))
+    grid.Size = max(side, 1)
+    grid.Spacing = max(1, int(_nice(size * 1.5) / 20))
+    return True
+
 
 def createDynamicGrid(doc=None):
     import create_scene_config
@@ -522,8 +569,51 @@ def createDynamicGrid(doc=None):
     DynamicGrid(obj)
     if FreeCAD.GuiUp:
         ViewProviderDynamicGrid(obj.ViewObject)
+        from PySide import QtCore
+        name, doc_name = obj.Name, doc.Name     # once the view shows the new object
+
+        def fit():
+            d = FreeCAD.listDocuments().get(doc_name)
+            o = d.getObject(name) if d is not None else None
+            if o is not None:
+                fit_to_model(o)
+        QtCore.QTimer.singleShot(150, fit)
     create_scene_config.getSceneFolder(doc, create=True).addObject(obj)
     return obj
+
+
+# ------------------------------------------------------------- sketch editing
+_sketch_in_edit = False
+
+
+def _set_sketching(on):
+    global _sketch_in_edit
+    _sketch_in_edit = on
+    for doc in FreeCAD.listDocuments().values():
+        for obj in doc.Objects:
+            if isGrid(obj):
+                try:
+                    obj.ViewObject.Proxy.set_sketching(on)
+                except Exception:
+                    pass
+
+
+class _EditObserver:
+    """Grids hidden while a sketch is in edit. Never add slotChangedObject: see textures.py."""
+
+    def slotInEdit(self, vobj):
+        try:
+            if vobj.Object.isDerivedFrom('Sketcher::SketchObject'):
+                _set_sketching(True)
+        except Exception:
+            pass
+
+    def slotResetEdit(self, vobj):
+        if _sketch_in_edit:
+            _set_sketching(False)
+
+
+_edit_observer = None
 
 
 if __name__ == "__main__":

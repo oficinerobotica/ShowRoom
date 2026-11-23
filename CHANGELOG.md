@@ -24,7 +24,8 @@ New
 - Section style for all ShowRoom panels: Flat, Inset, Outset, Outline.
 - Grid style: square grid or compass rose (the sun's compass on the ground: dashed circle
   with N E S W, north on +Y); in the grid's panel (double click) and as default in the
-  settings.
+  settings. Grid and rose fit the model when created; both are hidden while a sketch is
+  edited.
 - Your own texture folder (Settings, Textures), shown in the gallery after the bundled ones.
 - Sliders redrawn (thicker track, ringed thumb); they follow the mouse at once and a drag
   is a single undo step.
