@@ -471,6 +471,7 @@ class FloatingPanel(QtWidgets.QFrame):
             self.show()
             self.raise_()
         self.anim.stop()
+        QtCore.QTimer.singleShot(int(self.anim.duration()) + 20, _tell_overlay)
         self.anim.setStartValue(g.topLeft())
         self.anim.setEndValue(end)
         self.anim.start()
@@ -537,6 +538,7 @@ class FloatingPanel(QtWidgets.QFrame):
             self.setVisible(over)
             if over:
                 self.raise_()
+            _tell_overlay()
         if not over:
             return
         dialog = bool(Gui.Control.activeDialog())
@@ -720,6 +722,18 @@ class FloatingPanel(QtWidgets.QFrame):
             self._backdrop = None
         self.update()
 
+    def resizeEvent(self, ev):
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(QtCore.QRectF(self.rect()), 16, 16)
+        self.setMask(QtGui.QRegion(path.toFillPolygon().toPolygon()))
+        super().resizeEvent(ev)
+        QtCore.QTimer.singleShot(0, _tell_overlay)
+
+    def moveEvent(self, ev):
+        super().moveEvent(ev)
+        if self.anim.state() != QtCore.QAbstractAnimation.Running:
+            QtCore.QTimer.singleShot(0, _tell_overlay)
+
     def paintEvent(self, ev):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -780,6 +794,24 @@ def _host():
     return mw.findChild(QtWidgets.QMdiArea) or mw.centralWidget()
 
 
+def occupied(widget):
+    """Where the floating panel is, in ``widget`` coordinates (None when it is away)."""
+    p = _panel
+    if p is None or p.isHidden() or p.hidden_side:
+        return None
+    top_left = widget.mapFromGlobal(p.mapToGlobal(QtCore.QPoint(0, 0)))
+    return QtCore.QRect(top_left, p.size())
+
+
+def _tell_overlay():
+    try:
+        from dtpanels import overlay
+        if overlay._manager is not None:
+            overlay._manager.replace()
+    except Exception:
+        pass
+
+
 def enabled():
     return prefs.get('FloatingPanel')
 
@@ -822,6 +854,7 @@ def stop():
         _panel.hide()
         _panel.deleteLater()
         _panel = None
+        _tell_overlay()
 
 
 def apply_prefs():

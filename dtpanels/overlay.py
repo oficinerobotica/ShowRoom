@@ -267,7 +267,24 @@ class _Manager:
         s = self.bridge.theme.get("s", 1.0) if self.bridge else 1.0
         w = int(WIDTH * s)
         h = min(self._height, max(host.height() - TOP - MARGIN, 120))
-        self.quick.setGeometry(max(host.width() - w - MARGIN, 0), TOP, w, h)
+        x = max(host.width() - w - MARGIN, 0)
+        try:                        # make room for the floating properties panel
+            from dtpanels import floating
+            r = floating.occupied(host)
+        except Exception:
+            r = None
+        if r is not None and r.intersects(QtCore.QRect(x, TOP, w, h)):
+            if r.center().x() > host.width() / 2:
+                x = r.left() - w - MARGIN
+                if x < MARGIN:
+                    x = r.right() + MARGIN if r.right() + MARGIN + w <= host.width() else MARGIN
+            else:
+                x = max(host.width() - w - MARGIN, r.right() + MARGIN)
+        self.quick.setGeometry(max(x, 0), TOP, w, h)
+
+    def replace(self):
+        if self.quick is not None:
+            self._place()
 
     def hide(self):
         self.timer.stop()
