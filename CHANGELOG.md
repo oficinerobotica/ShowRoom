@@ -1,5 +1,11 @@
 # Changelog
 
+## ShowRoom 1.3.1
+
+- Property editor: search field, fx button to bind a number to an expression, placement as position + yaw/pitch/roll rows.
+- Floating panel hidden over the Start page.
+- Dynamic grid left out of the thumbnail saved in the file.
+
 ## ShowRoom 1.3.0
 
 - ShowRoom's own Data / View editor in the floating panel (QML): switches, choices, numbers with units, colours, sliders and text, grouped in cards; placement, links and expressions open FreeCAD's editor.

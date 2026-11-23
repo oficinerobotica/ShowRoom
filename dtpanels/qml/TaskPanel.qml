@@ -49,6 +49,30 @@ Item {
             }
         }
 
+        // ---- search (property editor) -----------------------------------------------------
+        Rectangle {
+            visible: bridge.searchable
+            width: parent.width
+            height: visible ? Math.round(30 * th.s) : 0
+            radius: Math.round(7 * th.s)
+            color: th.field
+            border.width: search.activeFocus ? 1 : 0
+            border.color: th.accent
+            Text { x: Math.round(9 * th.s); anchors.verticalCenter: parent.verticalCenter; text: "⌕"; color: th.muted; font.pixelSize: Math.round(14 * th.s) }
+            TextInput {
+                id: search
+                anchors.fill: parent
+                anchors.leftMargin: Math.round(28 * th.s); anchors.rightMargin: Math.round(8 * th.s)
+                verticalAlignment: TextInput.AlignVCenter
+                color: th.text
+                selectionColor: th.accent
+                font.pixelSize: Math.round(12 * th.s); font.family: th.family
+                selectByMouse: true
+                onTextChanged: bridge.setFilter(text)
+                Text { anchors.verticalCenter: parent.verticalCenter; visible: !search.text.length; text: "Search properties"; color: th.muted; font.pixelSize: Math.round(12 * th.s); font.family: th.family }
+            }
+        }
+
         // ---- error banner ----------------------------------------------------------------
         Rectangle {
             width: parent.width

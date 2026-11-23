@@ -23,7 +23,7 @@ Item {
         y: Math.round(24 * th.s)
         spacing: Math.round(6 * th.s)
         Repeater {
-            model: ["X", "Y", "Z"]
+            model: p.components && p.components.length === 3 ? p.components : ["X", "Y", "Z"]
             Rectangle {
                 width: Math.floor((row.width - 2 * Math.round(6 * th.s)) / 3)
                 height: Math.round(24 * th.s)

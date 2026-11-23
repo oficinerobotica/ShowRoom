@@ -142,7 +142,7 @@ def _public(p):
                presets=list(p.get("presets", [])), browseLabel=p.get("browseLabel", "Browse…"),
                shadowLabel=p.get("shadowLabel", "Shadows"), slider=bool(p.get("slider", True)),
                readOnly=bool(p.get("readOnly", False)), button=p.get("button", ""),
-               action=p.get("action", ""))
+               action=p.get("action", ""), fx=p.get("fx", ""), components=list(p.get("components", [])))
     labels = list(p.get("optionLabels", out["options"]))
     # an enumeration with more values than labels (a file from an older version)
     out["optionLabels"] = [labels[i] if i < len(labels) else str(o) for i, o in enumerate(out["options"])]
@@ -229,6 +229,8 @@ class Bridge(QtCore.QObject):
                                 notify=valuesChanged)
     hint = QtCore.Property(str, lambda self: self._safe(self.model.hint, ""), notify=stateChanged)
     error = QtCore.Property(str, lambda self: self._error, notify=stateChanged)
+    searchable = QtCore.Property(bool, lambda self: bool(getattr(self.model, "searchable", False)),
+                                 constant=True)
 
     # -- slots -----------------------------------------------------------------------------
     @QtCore.Slot(float)
@@ -261,6 +263,11 @@ class Bridge(QtCore.QObject):
         except Exception as exc:
             self._error = str(exc)
         self.refresh()
+
+    @QtCore.Slot(str)
+    def setFilter(self, text):
+        self.model.filter = text
+        self.valuesChanged.emit()
 
     @QtCore.Slot(str)
     def pickColor(self, name):

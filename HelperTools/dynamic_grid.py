@@ -393,6 +393,26 @@ class _SceneObserver:
     def slotFinishRestoreDocument(self, doc):
         schedule_update(doc)
 
+    # The thumbnail saved in the file is a picture of the view: no grid in it.
+    def slotStartSaveDocument(self, doc, filename):
+        self._hidden = []
+        for obj in doc.Objects:
+            try:
+                sw = obj.ViewObject.SwitchNode if isGrid(obj) and obj.ViewObject else None
+            except Exception:
+                sw = None
+            if sw is not None and sw.whichChild.getValue() >= 0:
+                self._hidden.append((sw, sw.whichChild.getValue()))
+                sw.whichChild.setValue(-1)
+
+    def slotFinishSaveDocument(self, doc, filename):
+        for sw, child in getattr(self, '_hidden', []):
+            try:
+                sw.whichChild.setValue(child)
+            except Exception:
+                pass
+        self._hidden = []
+
 
 def ensure_hooks():
     global _timer, _bridge, _observer

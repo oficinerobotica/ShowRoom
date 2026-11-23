@@ -46,6 +46,8 @@ def _icon_file(obj):
 class PropertiesModel(Model):
     """The properties of ``target`` (Data) or of its view provider (View)."""
     transaction = 'Edit property'
+    searchable = True
+    filter = ''
 
     def __init__(self):
         super().__init__(None)
@@ -54,6 +56,7 @@ class PropertiesModel(Model):
         self.open_native = None         # callback(name) from the floating panel
         self.title = 'Nothing selected'
         self.icon = ''
+        self._last = []
 
     # ------------------------------------------------------------------ target
     def set_target(self, obj, tab=None):
@@ -99,6 +102,13 @@ class PropertiesModel(Model):
             out.append((name, 'ReadOnly' in mode))
         return out
 
+    def hidden(self):
+        text = self.filter.strip().lower()
+        if not text:
+            return []
+        return [p['name'] for p in self._last if text not in p['label'].lower()
+                and text not in p['name'].lower() and text not in p.get('section', '').lower()]
+
     def structure(self):
         return (id(self.target), self.tab, tuple(self._visible()),
                 tuple(sorted(dict(getattr(self.target, 'ExpressionEngine', []) or []).keys()))
@@ -119,9 +129,50 @@ class PropertiesModel(Model):
                 tip = c.getDocumentationOfProperty(name)
             except Exception:
                 continue
-            out.append(self._row(c, name, _words(name), ptype, group, tip, readonly,
-                                 bound.get(name)))
+            expr = bound.get(name)
+            if expr is None and any(k.startswith(name + '.') for k in bound):
+                expr = '…'
+            if ptype == 'App::PropertyPlacement' and expr is None and not readonly:
+                out += self._placement(c, name, group, tip)
+                continue
+            out.append(self._row(c, name, _words(name), ptype, group, tip, readonly, expr))
+        self._last = out
         return out
+
+    def _placement(self, c, name, group, tip):
+        """Position and rotation (yaw, pitch, roll) on two compact rows."""
+        doc = self.target.Document
+
+        def edit(fn, label):
+            def setter(v):
+                pl = getattr(c, name)
+                new = fn(pl, [float(x) for x in v])
+                if new.isSame(pl, 1e-9) if hasattr(new, 'isSame') else new == pl:
+                    return
+                doc.openTransaction('Edit %s' % label)
+                try:
+                    setattr(c, name, new)
+                finally:
+                    doc.commitTransaction()
+                doc.recompute()
+            return setter
+
+        def pos(pl, v):
+            return App.Placement(App.Vector(*v), pl.Rotation)
+
+        def rot(pl, v):
+            r = App.Rotation()
+            r.setYawPitchRoll(*v)
+            return App.Placement(pl.Base, r)
+
+        base = dict(section=group, tip=tip, kind='vector')
+        label = _words(name)
+        return [dict(base, name=name + '@pos', label='%s · position (mm)' % label, decimals=2,
+                     get=lambda: list(getattr(c, name).Base), set=edit(pos, label)),
+                dict(base, name=name + '@rot', label='%s · rotation (°)' % label, decimals=2,
+                     components=['Yaw', 'Pitch', 'Roll'],
+                     get=lambda: list(getattr(c, name).Rotation.getYawPitchRoll()),
+                     set=edit(rot, label))]
 
     def _row(self, c, name, label, ptype, group, tip, readonly, expression):
         base = dict(name=name, label=label, section=group, tip=tip)
@@ -132,7 +183,10 @@ class PropertiesModel(Model):
                         readOnly=True, button='Edit')
 
         if expression is not None:
-            return native(lambda: '= %s' % expression)
+            row = native(lambda: '= %s' % expression)
+            if expression != '…':
+                row.update(button='fx', action='fx:' + name)
+            return row
         if readonly:
             return dict(base, kind='text', readOnly=True, get=lambda: self._text(c, name))
         doc = self.target.Document
@@ -170,7 +224,7 @@ class PropertiesModel(Model):
                 v = getattr(c, name)
                 return float(getattr(v, 'Value', v))
             return dict(base, kind='number', get=get, set=put(float), decimals=3 if not unit else 2,
-                        step=1, unit=unit, slider=False)
+                        step=1, unit=unit, slider=False, fx='fx:' + name if self.tab == 'Data' else '')
         if kind == 'Color':
             return dict(base, kind='color', get=lambda: hex_color(getattr(c, name)),
                         set=put(rgb), presets=[])
@@ -204,4 +258,24 @@ class PropertiesModel(Model):
     def trigger(self, action):
         if action.startswith('native:') and self.open_native is not None:
             self.open_native(action[7:])
+        elif action.startswith('fx:'):
+            self._expression(action[3:])
         return None
+
+    def _expression(self, name):
+        """Bind a property to an expression (empty text removes it)."""
+        from PySide import QtWidgets
+        obj = self.target
+        current = dict(obj.ExpressionEngine or []).get(name, '')
+        text, ok = QtWidgets.QInputDialog.getText(
+            Gui.getMainWindow(), 'Expression', '%s =\n(empty: no expression)' % _words(name),
+            QtWidgets.QLineEdit.Normal, current)
+        if not ok or text.strip() == current:
+            return
+        doc = obj.Document
+        doc.openTransaction('Expression %s' % name)
+        try:
+            obj.setExpression(name, text.strip() or None)
+        finally:
+            doc.commitTransaction()
+        doc.recompute()

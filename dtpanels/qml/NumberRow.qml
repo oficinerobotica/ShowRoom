@@ -18,13 +18,24 @@ Item {
 
     Text {
         anchors.left: parent.left
-        anchors.right: field.left
+        anchors.right: fxb.visible ? fxb.left : field.left
         anchors.rightMargin: Math.round(8 * th.s)
         y: Math.round(8 * th.s)
         text: p.label
         color: th.text
         font.pixelSize: Math.round(12 * th.s); font.family: th.family
         elide: Text.ElideRight
+    }
+    Rectangle {
+        id: fxb
+        visible: p.fx.length > 0
+        anchors.right: field.left
+        anchors.rightMargin: Math.round(4 * th.s)
+        y: 3
+        width: Math.round(24 * th.s); height: Math.round(24 * th.s); radius: Math.round(4 * th.s)
+        color: fxm.containsMouse ? th.accent : "transparent"
+        Text { anchors.centerIn: parent; text: "fx"; font.italic: true; font.bold: true; color: fxm.containsMouse ? th.accentText : th.muted; font.pixelSize: Math.round(11 * th.s); font.family: th.family }
+        MouseArea { id: fxm; anchors.fill: parent; hoverEnabled: true; onClicked: bridge.trigger(p.fx) }
     }
     Rectangle {
         id: field

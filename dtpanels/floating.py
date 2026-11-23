@@ -520,7 +520,25 @@ class FloatingPanel(QtWidgets.QFrame):
         elif self.stack.currentWidget() is not dock:
             self.show_tab(self.tab)             # keep the current tab on top
 
+    def _over_document(self):
+        """False over the Start page (and web pages, or with no window open)."""
+        try:
+            sub = self.host.currentSubWindow() if isinstance(self.host, QtWidgets.QMdiArea) else None
+            if sub is None:             # no window open at all
+                return not isinstance(self.host, QtWidgets.QMdiArea)
+            cls = sub.widget().metaObject().className()
+            return not ('Start' in cls or 'WebView' in cls or 'Browser' in cls)
+        except RuntimeError:
+            return True
+
     def _tick(self):
+        over = self._over_document()
+        if over != (not self.isHidden()):
+            self.setVisible(over)
+            if over:
+                self.raise_()
+        if not over:
+            return
         dialog = bool(Gui.Control.activeDialog())
         if self.tasks is not None and self.stack.indexOf(self.tasks.widget) < 0:
             self._task_shown()
