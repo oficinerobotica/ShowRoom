@@ -199,11 +199,7 @@ class PropertiesModel(Model):
                 v = convert(v)
                 if getattr(c, name) == v:
                     return
-                doc.openTransaction('Edit %s' % label)
-                try:
-                    setattr(c, name, v)
-                finally:
-                    doc.commitTransaction()
+                self._undoable(doc, (id(c), name), 'Edit %s' % label, lambda: setattr(c, name, v))
                 if self.tab == 'Data':
                     doc.recompute()
             return setter
@@ -265,17 +261,30 @@ class PropertiesModel(Model):
             return dict(base, kind='text', readOnly=True, get=lambda: self._text(c, name))
         return native(lambda: self._text(c, name))
 
+    def _undoable(self, doc, key, title, change):
+        """One undo step for a burst of changes to the same property (a slider
+        being dragged): the first opens it, those within a second follow it."""
+        import time
+        now = time.monotonic()
+        last = getattr(self, '_last_edit', (None, 0.0))
+        self._last_edit = (key, now)
+        if last[0] == key and now - last[1] < 1.0:
+            change()
+            return
+        doc.openTransaction(title)
+        try:
+            change()
+        finally:
+            doc.commitTransaction()
+
     def _putter(self, c, label, recompute):
         doc = self.target.Document
 
         def put(convert=lambda v: v):
             def setter(v):
                 v = convert(v)
-                doc.openTransaction('Edit %s' % label)
-                try:
-                    setattr(c, setter.name, v)
-                finally:
-                    doc.commitTransaction()
+                self._undoable(doc, (id(c), setter.name), 'Edit %s' % label,
+                               lambda: setattr(c, setter.name, v))
                 if recompute:
                     doc.recompute()
             return setter

@@ -10,10 +10,16 @@ Item {
     implicitHeight: Math.round((p.slider ? 54 : 30) * th.s)
     width: parent ? parent.width : 0
 
+    // while dragging, the slider and the number follow the mouse at once; the
+    // value goes to FreeCAD at most every 60 ms (and once more on release)
+    property bool dragging: false
+    property real live: 0
+    property real shown: dragging ? live : value
     function commit(v) {
         if (isNaN(v)) return
         bridge.setValue(p.name, Math.round(v * 1000) / 1000)
     }
+    Timer { id: throttle; interval: 60; onTriggered: row.commit(row.live) }
     function fmt(v) { return (p.special && Number(v) === 0) ? p.special : Number(v).toFixed(p.decimals) }
 
     Text {
@@ -58,8 +64,8 @@ Item {
             font.pixelSize: Math.round(12 * th.s); font.family: th.family
             selectByMouse: true
             clip: true
-            text: row.fmt(row.value)
-            onEditingFinished: { var t = text.replace(",", "."); row.commit(p.special && t === p.special ? 0 : parseFloat(t)); text = Qt.binding(function() { return row.fmt(row.value) }) }
+            text: row.fmt(row.shown)
+            onEditingFinished: { var t = text.replace(",", "."); row.commit(p.special && t === p.special ? 0 : parseFloat(t)); text = Qt.binding(function() { return row.fmt(row.shown) }) }
             Keys.onUpPressed: row.commit(row.value + p.step)
             Keys.onDownPressed: row.commit(row.value - p.step)
         }
@@ -81,7 +87,7 @@ Item {
         anchors.right: parent.right
         y: Math.round(30 * th.s)
         height: Math.round(20 * th.s)
-        property real ratio: Math.max(0, Math.min(1, (row.value - p.min) / (p.max - p.min)))
+        property real ratio: Math.max(0, Math.min(1, (row.shown - p.min) / (p.max - p.min)))
         Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: Math.max(6, Math.round(6 * th.s)); radius: height / 2; color: th.line }
         Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * track.ratio; height: Math.max(6, Math.round(6 * th.s)); radius: height / 2; color: th.accent }
         Rectangle {
@@ -104,10 +110,13 @@ Item {
             function pick(mx) {
                 var r = Math.max(0, Math.min(1, (mx - 6) / (width - 12)))
                 var v = p.min + r * (p.max - p.min)
-                row.commit(Math.round(v / p.step) * p.step)
+                row.live = Math.round(v / p.step) * p.step
+                if (!throttle.running) throttle.start()
             }
-            onPressed: function(mouse) { input.focus = false; pick(mouse.x) }
+            onPressed: function(mouse) { input.focus = false; row.live = row.value; row.dragging = true; pick(mouse.x) }
             onPositionChanged: function(mouse) { if (pressed) pick(mouse.x) }
+            onReleased: { throttle.stop(); row.commit(row.live); row.dragging = false }
+            onCanceled: { throttle.stop(); row.dragging = false }
         }
     }
 }
