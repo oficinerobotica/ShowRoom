@@ -54,6 +54,8 @@ class PropertiesModel(Model):
         self.target = None
         self.tab = 'Data'
         self.open_native = None         # callback(name) from the floating panel
+        self.on_change = None           # callback after an expression was edited
+        self._fx = None
         self.title = 'Nothing selected'
         self.icon = ''
         self._last = []
@@ -320,19 +322,60 @@ class PropertiesModel(Model):
         return None
 
     def _expression(self, name):
-        """Bind a property to an expression (empty text removes it)."""
-        from PySide import QtWidgets
+        """FreeCAD's own expression editor (with its suggestions), opened on the
+        property: a bound QuantitySpinBox under the mouse receives "=" like a user
+        typing it, and the result is applied as one undo step."""
+        from PySide import QtCore, QtGui, QtWidgets
         obj = self.target
-        current = dict(obj.ExpressionEngine or []).get(name, '')
-        text, ok = QtWidgets.QInputDialog.getText(
-            Gui.getMainWindow(), 'Expression', '%s =\n(empty: no expression)' % _words(name),
-            QtWidgets.QLineEdit.Normal, current)
-        if not ok or text.strip() == current:
-            return
-        doc = obj.Document
-        doc.openTransaction('Expression %s' % name)
-        try:
-            obj.setExpression(name, text.strip() or None)
-        finally:
-            doc.commitTransaction()
-        doc.recompute()
+        mw = Gui.getMainWindow()
+        box = Gui.UiLoader().createWidget('Gui::QuantitySpinBox', mw)
+        binding = Gui.ExpressionBinding(box)
+        binding.bind(obj, name)
+        binding.setAutoApply(False)
+        pos = mw.mapFromGlobal(QtGui.QCursor.pos())
+        box.setGeometry(pos.x(), pos.y(), 1, 1)     # a dot under the mouse: the dialog opens there
+        box.show()
+        box.setFocus()
+        QtWidgets.QApplication.sendEvent(box, QtGui.QKeyEvent(
+            QtCore.QEvent.KeyPress, QtCore.Qt.Key_Equal, QtCore.Qt.NoModifier, '='))
+        dialogs = [w for w in box.findChildren(QtWidgets.QDialog)
+                   if w.metaObject().className().endswith('DlgExpressionInput')]
+        self._fx = (box, binding)               # alive while the dialog is open
+
+        before = dict(obj.ExpressionEngine or []).get(name)
+
+        def done():
+            """The dialog closed: hand what the spin box got to the property."""
+            try:
+                doc = obj.Document
+                doc.openTransaction('Expression %s' % name)
+                try:
+                    binding.apply('Expression')
+                finally:
+                    if dict(obj.ExpressionEngine or []).get(name) == before:
+                        doc.abortTransaction()      # cancelled: nothing to undo
+                    else:
+                        doc.commitTransaction()
+                        doc.recompute()
+            finally:
+                self._fx = None
+                timer.stop()
+                box.hide()
+                box.deleteLater()
+                if self.on_change is not None:
+                    self.on_change()
+
+        def poll():
+            try:
+                open_ = dialogs[0].isVisible()
+            except RuntimeError:            # deleted by the spin box after closing
+                open_ = False
+            if not open_:
+                done()
+        timer = QtCore.QTimer(box)
+        timer.setInterval(150)
+        timer.timeout.connect(poll)
+        if not dialogs:
+            done()
+            raise RuntimeError("FreeCAD's expression editor did not open")
+        timer.start()

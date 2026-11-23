@@ -1,5 +1,9 @@
 # Changelog
 
+## ShowRoom 1.3.3
+
+- fx opens FreeCAD's own expression editor (with its suggestions); one undo step, nothing when cancelled.
+
 ## ShowRoom 1.3.2
 
 - Property editor: materials (Shape Appearance colour with quick picks, shininess), vectors and links edited in place; Edit opens FreeCAD's editor on that property with a Back button.

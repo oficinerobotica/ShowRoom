@@ -350,6 +350,7 @@ class FloatingPanel(QtWidgets.QFrame):
                 from dtpanels.properties import PropertiesModel
                 self.prop_model = PropertiesModel()
                 self.prop_model.open_native = self._open_native
+                self.prop_model.on_change = lambda: self.prop_bridge.refresh()
                 self.prop_bridge = B.Bridge(self.prop_model)
                 view = B._qml_widget(self.prop_bridge)
                 if view is None:
