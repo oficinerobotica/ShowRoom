@@ -535,6 +535,18 @@ class _WidgetForm(QtWidgets.QWidget):
         elif kind == "note":
             w = QtWidgets.QLabel(p["label"])
             w.setWordWrap(True)
+        elif kind in ("text", "native"):
+            w = QtWidgets.QWidget()
+            h = QtWidgets.QHBoxLayout(w)
+            h.setContentsMargins(0, 0, 0, 0)
+            w.edit = QtWidgets.QLineEdit()
+            w.edit.setReadOnly(bool(p["readOnly"]))
+            w.edit.editingFinished.connect(lambda: b.setValue(name, w.edit.text()))
+            h.addWidget(w.edit, 1)
+            if p["button"]:
+                btn = QtWidgets.QPushButton(p["button"])
+                btn.clicked.connect(lambda: b.trigger(p["action"]))
+                h.addWidget(btn)
         else:
             w = QtWidgets.QDoubleSpinBox()
             w.setDecimals(p["decimals"])
@@ -582,7 +594,10 @@ class _WidgetForm(QtWidgets.QWidget):
                     w.intensity.blockSignals(True)
                     w.intensity.setValue(v["intensity"])
                     w.intensity.blockSignals(False)
-                elif kind not in ("note",) and v is not None:
+                elif kind in ("text", "native"):
+                    if not w.edit.hasFocus():
+                        w.edit.setText("" if v is None else str(v))
+                elif kind not in ("note",) and isinstance(v, (int, float)):
                     w.setValue(v)
             finally:
                 w.blockSignals(False)
