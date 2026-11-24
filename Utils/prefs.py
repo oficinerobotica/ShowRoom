@@ -34,7 +34,7 @@ DEFAULTS = {
     'FloatingPanel': False, 'PanelVisibility': 'Fixed', 'PanelBlur': True, 'AutoTask': True,
     'PanelGeometry': '', 'PanelEasing': 'OutQuart', 'PanelAnimMs': 200, 'KeepOpenOnTask': True,
     'QmlProperties': True, 'SectionStyle': 'Flat', 'UserTextureDir': '',
-    'DefGridStyle': 'Grid',
+    'DefGridStyle': 'Grid', 'TableRows': True,
     # maintenance
     'WarnDisplayTools': True,
 }

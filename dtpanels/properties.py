@@ -19,6 +19,64 @@ UNITS = {'Length': 'mm', 'Distance': 'mm', 'Angle': '°', 'Area': 'mm²', 'Volum
          'Speed': 'mm/s', 'Force': 'N', 'Pressure': 'MPa', 'Acceleration': 'mm/s²', 'Mass': 'kg'}
 _ICONS = {}
 
+# small stroke icons telling the kind of each row (property editor, table rows)
+KIND_ICONS = {
+    'toggle': 'M3 7h18v10H3z M16 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+    'choice': 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
+    'length': 'M3 15l12-12 6 6-12 12zM7 11l2 2M10 8l2 2M13 5l2 2',
+    'angle': 'M4 20h16M4 20L16 6M10 20a7 7 0 0 0-2-5',
+    'number': 'M9 4L7 20M17 4l-2 16M4 9h16M3 15h16',
+    'text': 'M4 18L9 6l5 12M6 14h6M15 18v-6a2 2 0 0 1 4 0v6M15 15h4',
+    'color': 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
+    'link': 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+    'place': 'M12 12V4M12 12l7 4M12 12l-7 4',
+    'shape': 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
+    'more': 'M5 12h.01M12 12h.01M19 12h.01',
+}
+_KIND_URLS = {}
+
+
+def _icon(kind):
+    if kind not in _KIND_URLS:
+        import base64
+        try:
+            from dtpanels.bridge import make_theme
+            color = make_theme()['muted']
+        except Exception:
+            color = '#8a91a0'
+        svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" '
+               'fill="none" stroke="%s" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+               '<path d="%s"/></svg>' % (color, KIND_ICONS[kind]))
+        _KIND_URLS[kind] = 'data:image/svg+xml;base64,' + base64.b64encode(svg.encode()).decode()
+    return _KIND_URLS[kind]
+
+
+def _icon_kind(ptype, row):
+    kind = ptype.split('::')[-1].replace('Property', '')
+    if 'Link' in kind:
+        return 'link'
+    if row['name'].endswith('@color') or kind == 'Color':
+        return 'color'
+    if kind in ('Bool',):
+        return 'toggle'
+    if kind == 'Enumeration':
+        return 'choice'
+    if kind == 'Angle' or row.get('unit') == '°':
+        return 'angle'
+    if kind in ('Length', 'Distance', 'Area', 'Volume') or row.get('unit') == 'mm':
+        return 'length'
+    if row.get('kind') == 'vector':
+        return 'place'
+    if row.get('kind') == 'number':
+        return 'number'
+    if kind in ('String', 'Font'):
+        return 'text'
+    if 'Shape' in kind:
+        return 'shape'
+    if ptype.startswith('Materials::'):
+        return 'color'
+    return 'more'
+
 
 def _words(name):
     """FreeCAD shows 'ShapeAppearance' as 'Shape Appearance'."""
@@ -47,10 +105,13 @@ class PropertiesModel(Model):
     """The properties of ``target`` (Data) or of its view provider (View)."""
     transaction = 'Edit property'
     searchable = True
+    table = True            # the "table" rows of this editor (Settings, Properties panel)
     filter = ''
 
     def __init__(self):
         super().__init__(None)
+        from Utils import prefs
+        self.table = prefs.get('TableRows')
         self.target = None
         self.tab = 'Data'
         self.open_native = None         # callback(name) from the floating panel
@@ -136,10 +197,14 @@ class PropertiesModel(Model):
             if expr is None and any(k.startswith(name + '.') for k in bound):
                 expr = '…'
             if ptype == 'App::PropertyPlacement' and expr is None and not readonly:
-                out += self._placement(c, name, group, tip)
+                out += [dict(r, icon=_icon('place')) for r in self._placement(c, name, group, tip)]
                 continue
             row = self._row(c, name, _words(name), ptype, group, tip, readonly, expr)
-            out += row if isinstance(row, list) else [row]
+            for r in row if isinstance(row, list) else [row]:
+                r.setdefault('icon', _icon(_icon_kind(ptype, r)))
+                if 'Link' in ptype and r.get('kind') == 'enum':
+                    r['isLink'] = True
+                out.append(r)
         self._last = out
         return out
 

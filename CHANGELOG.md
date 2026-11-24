@@ -10,6 +10,10 @@ New
   with quick picks, sliders, vectors, links as menus, placement as position + yaw/pitch/roll,
   search field, fx button that opens FreeCAD's expression editor. What it cannot edit opens
   FreeCAD's editor on that property, with a Back button.
+- Table layout for the Data / View editor (on by default, Settings > Properties panel): an
+  icon for the kind of each property, lines between rows, the row under the mouse lit,
+  short choices as segmented controls, links as chips, expressions as violet pills,
+  read-only values with a lock, sections with their count and how many were edited.
 - Appearance in the Data tab (colour, shininess, transparency); for a feature inside a Body
   it edits the Body, which is what is shown.
 - Panel visibility: fixed, rolled up (opens on hover) or autohide (slides to the nearer

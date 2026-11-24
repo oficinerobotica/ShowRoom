@@ -929,6 +929,8 @@ class SettingsModel(Model):
               tip='How the sections of the ShowRoom panels look; panels opened afterwards use it'),
             P('QmlProperties', "ShowRoom's own Data / View editor (switches, sliders)", 'bool',
               'Properties panel', tip="Off: FreeCAD's property editor"),
+            P('TableRows', 'Table layout: type icons, lines between rows, clearer states', 'bool',
+              'Properties panel', tip='For the Data / View editor; it applies when the panel opens'),
             P('KeepOpenOnTask', 'Keep it open while a task is open', 'bool', 'Properties panel'),
             P('PanelEasing', 'Animation', 'enum', 'Properties panel',
               options=list(EASINGS),

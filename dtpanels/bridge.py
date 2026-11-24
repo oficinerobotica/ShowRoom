@@ -149,7 +149,8 @@ def _public(p):
                shadowLabel=p.get("shadowLabel", "Shadows"), slider=bool(p.get("slider", True)),
                readOnly=bool(p.get("readOnly", False)), button=p.get("button", ""),
                action=p.get("action", ""), fx=p.get("fx", ""), components=list(p.get("components", [])),
-               hasDefault="default" in p, default=p.get("default"))
+               hasDefault="default" in p, default=p.get("default"),
+               icon=p.get("icon", ""), isLink=bool(p.get("isLink", False)))
     labels = list(p.get("optionLabels", out["options"]))
     # an enumeration with more values than labels (a file from an older version)
     out["optionLabels"] = [labels[i] if i < len(labels) else str(o) for i, o in enumerate(out["options"])]
@@ -240,6 +241,8 @@ class Bridge(QtCore.QObject):
     error = QtCore.Property(str, lambda self: self._error, notify=stateChanged)
     searchable = QtCore.Property(bool, lambda self: bool(getattr(self.model, "searchable", False)),
                                  constant=True)
+    tableRows = QtCore.Property(bool, lambda self: bool(getattr(self.model, "table", False)),
+                                constant=True)
 
     # -- slots -----------------------------------------------------------------------------
     @QtCore.Slot(float)

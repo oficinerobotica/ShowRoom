@@ -14,6 +14,17 @@ Rectangle {
         return n
     }
     property string look: th.sectionStyle || "Flat"
+    // table rows (property editor): a column of type icons, lines between rows
+    property bool table: bridge.tableRows === true
+    property int iconCol: table ? Math.round(24 * th.s) : 0
+    property int edited: {
+        var n = 0, v = bridge.values
+        for (var i = 0; i < section.params.length; ++i) {
+            var q = section.params[i]
+            if (q.hasDefault && String(v[q.name]) !== String(q["default"])) n++
+        }
+        return n
+    }
     visible: shown > 0
     height: visible ? body.implicitHeight + 18 : 0
     property bool bevel: look === "Inset" || look === "Outset"
@@ -74,12 +85,30 @@ Rectangle {
             width: parent.width
             visible: sec.section.title !== ""
             height: visible ? Math.round(24 * th.s) : 0
-            Text {
+            Row {
                 anchors.verticalCenter: parent.verticalCenter
-                text: sec.section.title
-                color: sec.th.muted
-                font.pixelSize: Math.round(12 * th.s); font.family: th.family
-                font.bold: true
+                spacing: Math.round(6 * th.s)
+                Text {
+                    text: sec.table ? sec.section.title.toUpperCase() : sec.section.title
+                    color: sec.th.muted
+                    font.pixelSize: Math.round((sec.table ? 11 : 12) * th.s); font.family: th.family
+                    font.bold: true
+                    font.letterSpacing: sec.table ? 0.8 : 0
+                }
+                Text {      // table rows: how many properties
+                    visible: sec.table
+                    text: sec.shown
+                    color: sec.th.muted; opacity: 0.8
+                    font.pixelSize: Math.round(11 * th.s); font.family: th.family
+                }
+            }
+            Text {          // table rows: how many differ from the default
+                visible: sec.table && sec.edited > 0
+                anchors.right: tri.left; anchors.rightMargin: Math.round(8 * th.s)
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Edited " + sec.edited
+                color: sec.th.accent
+                font.pixelSize: Math.round(11 * th.s); font.family: th.family
             }
             // collapse triangle, drawn so that it sits on the title's centre line
             Canvas {
@@ -103,10 +132,34 @@ Rectangle {
         Repeater {
             model: sec.open ? sec.section.params : []
             Loader {
-                width: body.width
+                x: sec.iconCol
+                width: body.width - sec.iconCol
                 property bool hiddenRow: bridge.hidden.indexOf(modelData.name) >= 0
                 visible: !hiddenRow
-                height: hiddenRow ? 0 : (item ? item.implicitHeight : 0)
+                height: hiddenRow ? 0 : (item ? item.implicitHeight + (sec.table ? Math.round(6 * sec.th.s) : 0) : 0)
+                // table rows: the row lights up under the mouse, a hairline below it, its type icon
+                Rectangle {
+                    visible: sec.table && hover.containsMouse
+                    z: -1
+                    x: -sec.iconCol - Math.round(4 * sec.th.s); y: -Math.round(1 * sec.th.s)
+                    width: parent.width + sec.iconCol + Math.round(8 * sec.th.s); height: parent.height
+                    radius: Math.round(6 * sec.th.s)
+                    color: Qt.rgba(Qt.color(sec.th.accent).r, Qt.color(sec.th.accent).g, Qt.color(sec.th.accent).b, 0.07)
+                }
+                MouseArea { id: hover; anchors.fill: parent; anchors.leftMargin: -sec.iconCol; hoverEnabled: sec.table; acceptedButtons: Qt.NoButton }
+                Image {
+                    visible: sec.table && modelData.icon !== ""
+                    source: sec.table ? modelData.icon : ""
+                    x: -sec.iconCol; y: Math.round(7 * sec.th.s)
+                    width: Math.round(14 * sec.th.s); height: width
+                    sourceSize.width: 48; sourceSize.height: 48
+                }
+                Rectangle {
+                    visible: sec.table
+                    x: -sec.iconCol; y: parent.height - 1
+                    width: parent.width + sec.iconCol; height: 1
+                    color: sec.th.line; opacity: 0.55
+                }
                 Component.onCompleted: setSource(
                     modelData.kind === "bool" ? "ToggleRow.qml"
                     : modelData.kind === "enum" ? "ChoiceRow.qml"
@@ -124,7 +177,7 @@ Rectangle {
                     && String(bridge.values[modelData.name]) !== String(modelData["default"])
                 Rectangle {
                     visible: parent.changed
-                    x: -Math.round(8 * sec.th.s); y: Math.round(12 * sec.th.s)
+                    x: -sec.iconCol - Math.round(8 * sec.th.s); y: Math.round(12 * sec.th.s)
                     width: Math.round(6 * sec.th.s); height: width; radius: width / 2
                     color: sec.th.accent
                     SequentialAnimation on opacity {
