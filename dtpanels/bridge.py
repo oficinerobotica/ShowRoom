@@ -315,6 +315,18 @@ class Bridge(QtCore.QObject):
             return
         self.refresh()
 
+    @QtCore.Slot(str)
+    def contextMenu(self, name):
+        """Right click on a row (only the properties editor has a menu)."""
+        menu = getattr(self.model, "context", None)
+        if menu is None or not self.alive():
+            return
+        try:
+            menu(name)
+        except Exception as exc:
+            self._error = str(exc)
+        self.refresh()
+
     # -- updates ---------------------------------------------------------------------------
     def schedule_refresh(self):
         if not self._closed:

@@ -78,6 +78,39 @@ def _icon_kind(ptype, row):
     return 'more'
 
 
+# FreeCAD's property editor shows a property only if its type has an editor
+# (Property::getEditorName() not empty), unless "Show hidden" is on.  These have none:
+# the colour arrays of the edges and vertices, the line/point materials, the shape...
+NO_EDITOR = {
+    'App::Property', 'App::PropertyBoolList', 'App::PropertyColorList', 'App::PropertyIntPairList',
+    'App::PropertyPlacementList', 'App::PropertyIntegerSet', 'App::PropertyPythonObject',
+    'App::PropertyExpressionEngine', 'App::PropertyUUID', 'App::PropertyComplexGeoData',
+    'Materials::PropertyMaterial', 'Part::PropertyPartShape', 'Part::PropertyGeometryList',
+    'Part::PropertyFilletEdges', 'Part::PropertyShapeHistory', 'Part::PropertyTopoShapeList',
+    'Part::PropertyShapeCache', 'Points::PropertyPointKernel', 'Points::PropertyGreyValueList',
+    'Points::PropertyNormalList', 'Mesh::PropertyNormalList', 'Mesh::PropertyCurvatureList',
+    'Fem::PropertyPostDataObject', 'Spreadsheet::PropertyColumnWidths',
+    'Spreadsheet::PropertyRowHeights', 'Spreadsheet::PropertySheet', 'Robot::PropertyTrajectory',
+    'Inspection::PropertyDistanceList', 'TechDraw::PropertyCenterLineList',
+    'TechDraw::PropertyCosmeticEdgeList', 'TechDraw::PropertyCosmeticVertexList',
+    'TechDraw::PropertyGeomFormatList'}
+
+
+def has_editor(c, name, ptype):
+    """Whether FreeCAD's own property editor shows ``name`` (with "Show hidden" off)."""
+    if ptype in NO_EDITOR:
+        return False
+    try:
+        status = c.getPropertyStatus(name)
+    except Exception:
+        status = []
+    if ptype == 'App::PropertyMaterial':           # LineMaterial, PointMaterial...
+        return 'MaterialEdit' in status
+    if ptype == 'App::PropertyMaterialList':
+        return 'NoMaterialListEdit' not in status
+    return True
+
+
 def _words(name):
     """FreeCAD shows 'ShapeAppearance' as 'Shape Appearance'."""
     return re.sub(r'(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])', ' ', name)
@@ -114,8 +147,10 @@ class PropertiesModel(Model):
         self.table = prefs.get('TableRows')
         self.target = None
         self.tab = 'Data'
-        self.open_native = None         # callback(name) from the floating panel
+        self.open_native = None         # callback(name, tab) from the floating panel
+        self.open_menu = None           # callback(name, tab): FreeCAD's right click menu
         self.on_change = None           # callback after an expression was edited
+        self.show_all = False           # FreeCAD's "Show hidden" (right click menu)
         self.reselecting = False        # True while _reselect puts the selection back
         self._fx = None
         self.title = 'Nothing selected'
@@ -159,12 +194,36 @@ class PropertiesModel(Model):
                 mode = c.getEditorMode(name)
             except Exception:
                 mode = []
-            if 'Hidden' in mode:
-                continue
-            if name in ('ExpressionEngine', 'Proxy', 'Visibility') and self.tab == 'Data':
+            if not self.show_all:
+                # exactly what FreeCAD's editor shows: no hidden property, none without an editor
+                if 'Hidden' in mode:
+                    continue
+                try:
+                    ptype = c.getTypeIdOfProperty(name)
+                except Exception:
+                    continue
+                # the one extra of ShowRoom: the material with the object's colour (Data tab)
+                if not has_editor(c, name, ptype) and ptype != 'Materials::PropertyMaterial':
+                    continue
+                if name == 'Visibility' and self.tab == 'Data':
+                    continue
+            elif name in ('ExpressionEngine', 'Proxy'):
                 continue
             out.append((name, 'ReadOnly' in mode))
         return out
+
+    def owner(self, row):
+        """The property behind a row and the tab FreeCAD shows it in: rows such as
+        'Placement@pos' or 'ShapeAppearance@color' are parts of one property, and
+        'View@Transparency' (in Data) is a View property."""
+        if row.startswith('View@'):
+            return row[5:], 'View'
+        return row.partition('@')[0], self.tab
+
+    def context(self, row):
+        """Right click on a row: FreeCAD's own menu for that property."""
+        if self.open_menu is not None and self.target is not None and not row.startswith('_'):
+            self.open_menu(*self.owner(row))
 
     def hidden(self):
         text = self.filter.strip().lower()
@@ -174,7 +233,7 @@ class PropertiesModel(Model):
                 and text not in p['name'].lower() and text not in p.get('section', '').lower()]
 
     def structure(self):
-        return (id(self.target), self.tab, tuple(self._visible()),
+        return (id(self.target), self.tab, self.show_all, tuple(self._visible()),
                 tuple(sorted(dict(getattr(self.target, 'ExpressionEngine', []) or []).keys()))
                 if self.target is not None else ())
 
@@ -251,6 +310,9 @@ class PropertiesModel(Model):
             return dict(base, kind='native', get=text, action='native:' + name,
                         readOnly=True, button='Edit')
 
+        if self.show_all and not has_editor(c, name, ptype) and not ptype.startswith('Materials::'):
+            # shown only by "Show hidden": FreeCAD can't edit it either, just read it
+            return dict(base, kind='text', readOnly=True, get=lambda: self._text(c, name))
         if expression is not None:
             row = native(lambda: '= %s' % expression)
             if expression != '…':
@@ -302,13 +364,15 @@ class PropertiesModel(Model):
         if ptype.startswith('Materials::'):
             # the physical material (steel, PLA...): its name, then the colour the
             # object is shown with (Shape Appearance of the view)
-            rows = [dict(base, kind='native', readOnly=True, button='Edit', action='native:' + name,
+            # FreeCAD's editor has no row for it: "Edit" opens its material dialog
+            rows = [dict(base, kind='native', readOnly=True, button='Edit', action='cmd:Std_SetMaterial',
                          get=lambda: getattr(getattr(c, name), 'Name', '') or '')]
             vo = self._appearance_owner()
             if vo is not None and 'ShapeAppearance' in vo.PropertiesList:
+                # colour only: shininess and the rest stay in the View tab (Shape Appearance)
                 rows += self._material(vo, 'ShapeAppearance', 'Appearance', dict(base), True,
                                        self._putter(vo, 'Appearance', recompute=False),
-                                       transparency=False)
+                                       transparency=False)[:1]
             if vo is not None and 'Transparency' in vo.PropertiesList:
                 # the View tab's own Transparency, here too to save a click
                 put_view = self._putter(vo, 'Transparency', recompute=False)
@@ -490,7 +554,9 @@ class PropertiesModel(Model):
 
     def trigger(self, action):
         if action.startswith('native:') and self.open_native is not None:
-            self.open_native(action[7:])
+            self.open_native(*self.owner(action[7:]))
+        elif action.startswith('cmd:'):
+            Gui.runCommand(action[4:], 0)
         elif action.startswith('fx:'):
             self._expression(action[3:])
         return None

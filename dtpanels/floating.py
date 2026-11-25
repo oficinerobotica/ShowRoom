@@ -137,6 +137,7 @@ class FloatingPanel(QtWidgets.QFrame):
         self.setAttribute(QtCore.Qt.WA_StyledBackground, False)
         self.props = self.tasks = None
         self.qml_page = self.prop_model = self.prop_bridge = None
+        self.parking = None             # where FreeCAD's property view waits (_park)
         self._qml_failed = False
         self.tab = 'Data'
         self.hidden_side = None         # autohide: 'left' / 'right' while slid away
@@ -317,6 +318,7 @@ class FloatingPanel(QtWidgets.QFrame):
         self.blur_soon.stop()
         self._watch_camera(None)
         self.host.removeEventFilter(self)
+        self._park(False)
         for b in (self.props, self.tasks):
             if b is not None:
                 if b is self.props:
@@ -344,16 +346,44 @@ class FloatingPanel(QtWidgets.QFrame):
             self.prop_model.tab = name
             self.update_target()
             self.stack.setCurrentWidget(self.qml_page)
+            self._park(True)
         elif self.props is not None:
+            self._park(False)
             self.stack.setCurrentWidget(self.props.widget)
-            tabs = self._native_tabs(self.props.widget, False)
-            if tabs is not None:
-                texts = [tabs.tabText(i).replace('&', '').strip().lower() for i in range(tabs.count())]
-                if name.lower() in texts:
-                    tabs.setCurrentIndex(texts.index(name.lower()))
-                elif tabs.count() == 2:
-                    # translated FreeCAD: the property view always has View first, Data second
-                    tabs.setCurrentIndex(0 if name == 'View' else 1)
+            self._native_tab(name)
+
+    def _park(self, on):
+        """Under the ShowRoom editor, FreeCAD's property view waits out of sight but
+        shown: a hidden one lets go of the selection and empties, so its right click
+        menu and its rows would not be there when asked for."""
+        if self.props is None:
+            return
+        w = self.props.widget
+        parked = self.stack.indexOf(w) < 0
+        if on and not parked:
+            if self.parking is None:
+                self.parking = QtWidgets.QWidget(self)
+                self.parking.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+            self.stack.removeWidget(w)
+            w.setParent(self.parking)
+            self.parking.setGeometry(-20000, -20000, max(self.stack.width(), 200),
+                                     max(self.stack.height(), 200))
+            w.setGeometry(0, 0, self.parking.width(), self.parking.height())
+            self.parking.show()
+            w.show()
+        elif not on and parked:
+            self.stack.addWidget(w)
+
+    def _native_tab(self, name):
+        """Data or View in FreeCAD's own property view (its tab bar is hidden)."""
+        tabs = self._native_tabs(self.props.widget, False)
+        if tabs is not None:
+            texts = [tabs.tabText(i).replace('&', '').strip().lower() for i in range(tabs.count())]
+            if name.lower() in texts:
+                tabs.setCurrentIndex(texts.index(name.lower()))
+            elif tabs.count() == 2:
+                # translated FreeCAD: the property view always has View first, Data second
+                tabs.setCurrentIndex(0 if name == 'View' else 1)
 
     # -------------------------------------------------------------- QML properties
     def _qml_page(self):
@@ -367,6 +397,7 @@ class FloatingPanel(QtWidgets.QFrame):
                 from dtpanels.properties import PropertiesModel
                 self.prop_model = PropertiesModel()
                 self.prop_model.open_native = self._open_native
+                self.prop_model.open_menu = self._open_menu
                 self.prop_model.on_change = lambda: self.prop_bridge.refresh()
                 self.prop_bridge = B.Bridge(self.prop_model)
                 view = B._qml_widget(self.prop_bridge)
@@ -400,23 +431,87 @@ class FloatingPanel(QtWidgets.QFrame):
         if view is not None:        # a much shorter page must not stay blank
             QtCore.QTimer.singleShot(60, view.update)
 
-    def _open_native(self, name):
+    def _native_row(self, name, tab, then, tries=25):
+        """FreeCAD's own row of property ``name`` (Data or View tab), handed to
+        ``then(tree, index)`` once FreeCAD has filled its editor (it does so a moment
+        after a selection).  Rows are found by the property's real name, which the
+        row's tooltip carries ("Name: ..."): labels are translated."""
+        if self.props is None:
+            return
+        self._native_tab(tab)
+        want = ('Name: ' + name, 'Name: ' + name + '*')
+        for tree in self.props.widget.findChildren(QtWidgets.QTreeView):
+            if not tree.isVisibleTo(self.props.widget):
+                continue
+            model = tree.model()
+            for g in range(model.rowCount()):
+                group = model.index(g, 0)
+                for r in range(model.rowCount(group)):
+                    index = model.index(r, 0, group)
+                    tip = str(index.data(QtCore.Qt.ToolTipRole) or '')
+                    if any(line in want for line in tip.splitlines()):
+                        then(tree, index)
+                        return
+        if tries > 0:
+            QtCore.QTimer.singleShot(40, lambda: self._native_row(name, tab, then, tries - 1))
+        else:
+            App.Console.PrintWarning("ShowRoom: '%s' is not in FreeCAD's property editor\n" % name)
+
+    def _open_native(self, name, tab=None):
         """What the ShowRoom editor cannot edit: FreeCAD's own editor, on that property,
         with a button to come back."""
-        def go():
-            self.show_tab(self.tab, native=True)
-            from dtpanels.properties import _words
-            for tree in self.props.widget.findChildren(QtWidgets.QTreeView):
-                if not tree.isVisible():
-                    continue
-                model = tree.model()
-                hits = model.match(model.index(0, 0), QtCore.Qt.DisplayRole, _words(name), 1,
-                                   QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive)
-                if hits:
-                    tree.setCurrentIndex(hits[0])
-                    tree.expand(hits[0])
-                    tree.scrollTo(hits[0], QtWidgets.QAbstractItemView.PositionAtTop)
-        QtCore.QTimer.singleShot(0, go)
+        tab = tab or self.tab
+        self.show_tab(self.tab, native=True)
+
+        def go(tree, index):
+            tree.setCurrentIndex(index)
+            tree.scrollTo(index, QtWidgets.QAbstractItemView.PositionAtTop)
+        self._native_row(name, tab, go)
+
+    def _open_menu(self, name, tab):
+        """Right click on a row of the ShowRoom editor: FreeCAD's own menu (copy, add,
+        rename or delete a property, expression, show hidden, status...), on the
+        property in FreeCAD's editor, which waits out of sight under ours."""
+        def go(tree, index):
+            value = index.sibling(index.row(), 1)       # "Copy" copies what is clicked
+            tree.setCurrentIndex(value)
+            state = {}
+
+            def picked(action):
+                menu = state.get('menu')
+                # "Show hidden" is the only checkable entry of the menu itself
+                if menu is not None and action.isCheckable() and action in menu.actions():
+                    self.prop_model.show_all = action.isChecked()
+
+            def hook():
+                menu = QtWidgets.QApplication.activePopupWidget()
+                if not isinstance(menu, QtWidgets.QMenu) or 'menu' in state:
+                    return
+                state['menu'] = menu
+                menu.triggered.connect(picked)
+                # "Expression" would open its editor in FreeCAD's tree, out of sight: ShowRoom's
+                # own (the same dialog, under the mouse) takes its place
+                word = QtCore.QCoreApplication.translate('Gui::PropertyEditor::PropertyEditor',
+                                                         'Expression')
+                for a in menu.actions():
+                    if a.text().replace('&', '') == word.replace('&', ''):
+                        if tab == 'Data':       # ShowRoom binds expressions of Data properties
+                            ours = getattr(QtGui, 'QAction', None) or QtWidgets.QAction
+                            ours = ours(a.text(), menu)
+                            ours.setData(-1)        # FreeCAD does nothing with it
+                            ours.triggered.connect(lambda: QtCore.QTimer.singleShot(
+                                0, lambda: self.prop_bridge.trigger('fx:' + name)))
+                            menu.insertAction(a, ours)
+                        menu.removeAction(a)
+                        break
+            QtCore.QTimer.singleShot(0, hook)
+            rect = tree.visualRect(value)
+            ev = QtGui.QContextMenuEvent(QtGui.QContextMenuEvent.Mouse, rect.center(),
+                                         QtGui.QCursor.pos())
+            QtWidgets.QApplication.sendEvent(tree.viewport(), ev)   # returns once the menu is done
+            if self.prop_bridge is not None:
+                QtCore.QTimer.singleShot(0, self.prop_bridge.refresh)
+        self._native_row(name, tab, go)
 
     def clicked_tab(self, name):
         if self.mode() == 'Rolled up' and not self.rolled and name == self.tab:

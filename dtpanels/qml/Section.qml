@@ -172,6 +172,14 @@ Rectangle {
                     : (modelData.kind === "text" || modelData.kind === "native") ? "TextRow.qml"
                     : modelData.kind === "compass" ? "CompassRow.qml" : "NumberRow.qml",
                     { "p": modelData, "th": sec.th })
+                // right click: FreeCAD's own menu for the property (left clicks go through)
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.leftMargin: -sec.iconCol      // the type icon too
+                    z: 10
+                    acceptedButtons: Qt.RightButton
+                    onClicked: bridge.contextMenu(modelData.name)
+                }
                 // changed from the default: a dot in the margin; clicking it puts the default back
                 property bool changed: modelData.hasDefault && !hiddenRow
                     && String(bridge.values[modelData.name]) !== String(modelData["default"])
