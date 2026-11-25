@@ -924,7 +924,8 @@ class SettingsModel(Model):
             P('PanelVisibility', 'Visibility', 'enum', 'Properties panel',
               options=['Fixed', 'Rolled up', 'Autohide'],
               tip='Autohide: slides away, comes back when the mouse touches the screen edge '
-                  'on its side, when something is selected or when a task opens'),
+                  'on its side, when something is selected (if "Open it when something is '
+                  'selected" is on) or when a task opens'),
             P('SectionStyle', 'Section style', 'enum', 'Panels', options=['Flat', 'Inset', 'Outset', 'Outline'],
               tip='How the sections of the ShowRoom panels look; panels opened afterwards use it'),
             P('QmlProperties', "ShowRoom's own Data / View editor (switches, sliders)", 'bool',
@@ -932,6 +933,9 @@ class SettingsModel(Model):
             P('TableRows', 'Table layout: type icons, lines between rows, clearer states', 'bool',
               'Properties panel', tip='For the Data / View editor; it applies when the panel opens'),
             P('KeepOpenOnTask', 'Keep it open while a task is open', 'bool', 'Properties panel'),
+            P('ShowOnSelection', 'Open it when something is selected', 'bool', 'Properties panel',
+              tip='Rolled up and Autohide. Off: only the mouse opens it (over the panel, or at '
+                  'the screen edge); same as the button between the visibility button and the pin'),
             P('PanelEasing', 'Animation', 'enum', 'Properties panel',
               options=list(EASINGS),
               tip='Out curves start fast and slow down at the end: the most natural'),

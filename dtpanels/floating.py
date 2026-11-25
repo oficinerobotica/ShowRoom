@@ -175,10 +175,14 @@ class FloatingPanel(QtWidgets.QFrame):
             self.buttons[name] = b
         icons = QtWidgets.QHBoxLayout()
         icons.setSpacing(2)
-        hl.addLayout(icons, 0)              # ~20 %: visibility and pin
+        hl.addLayout(icons, 0)              # ~20 %: visibility, show on selection, pin
         self.mode_button = QtWidgets.QToolButton(self.header)
         self.mode_button.clicked.connect(self.cycle_mode)
         icons.addWidget(self.mode_button)
+        self.select_button = QtWidgets.QToolButton(self.header)
+        self.select_button.setCheckable(True)
+        self.select_button.toggled.connect(self.set_show_on_selection)
+        icons.addWidget(self.select_button)
         self.pin_button = QtWidgets.QToolButton(self.header)
         self.pin_button.setCheckable(True)
         self.pin_button.toggled.connect(self.set_pin)
@@ -534,6 +538,23 @@ class FloatingPanel(QtWidgets.QFrame):
         self.pin_button.setToolTip('Pinned: the panel stays open while a task is open (click to unpin)'
                                    if on else 'Not pinned: the panel may hide during tasks (click to pin)')
 
+    def set_show_on_selection(self, on):
+        """Rolled up / Autohide: open the panel when something gets selected, or
+        only when the mouse goes over it (rolled up) or to the screen edge (autohide)."""
+        prefs.set('ShowOnSelection', on)
+        fixed = self.mode() == 'Fixed'
+        self.select_button.setIcon(_select_icon(on and not fixed, self.icon_color, self.accent))
+        if fixed:
+            tip = 'Fixed: the panel is always open, selecting has nothing to open'
+        elif on:
+            tip = 'Opens when something is selected (click: only with the mouse)'
+        else:
+            tip = ('Opens only when the mouse is over it (click: also when something is selected)'
+                   if self.mode() == 'Rolled up' else
+                   'Opens only when the mouse touches the screen edge '
+                   '(click: also when something is selected)')
+        self.select_button.setToolTip(tip)
+
     def set_mode(self, m):
         prefs.set('PanelVisibility', m)
         self.apply_mode()
@@ -557,6 +578,11 @@ class FloatingPanel(QtWidgets.QFrame):
         self.pin_button.setChecked(prefs.get('KeepOpenOnTask'))
         self.pin_button.blockSignals(False)
         self.set_pin(self.pin_button.isChecked())
+        self.select_button.blockSignals(True)
+        self.select_button.setChecked(prefs.get('ShowOnSelection'))
+        self.select_button.setEnabled(m != 'Fixed')
+        self.select_button.blockSignals(False)
+        self.set_show_on_selection(self.select_button.isChecked())
         self._easing()
         if m != 'Autohide' and self.hidden_side:
             self.slide(False)
@@ -943,6 +969,27 @@ def _pin_icon(on, color, accent):
     return QtGui.QIcon(pm)
 
 
+def _select_icon(on, color, accent):
+    """A mouse pointer clicking an object, and the panel it opens: filled when
+    selecting opens the panel, outline (dashed panel) when only the mouse does."""
+    c = (accent if on else color).name()
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+           '<g fill="none" stroke="%(c)s" stroke-width="1.6" stroke-linejoin="round" '
+           'stroke-linecap="round">'
+           '<rect x="12.5" y="2" width="9.5" height="11" rx="2" fill="%(c)s" '
+           'fill-opacity="%(f)s" stroke-dasharray="%(d)s"/>'
+           '<path d="M15 5.5h4.5M15 8h4.5M15 10.5h3" stroke="%(l)s"/>'
+           '<path d="M2.5 10.5l1.9 10.5 2.4-3.7 4 3.7 1.6-1.7-3.9-3.6 4.2-1.3z" '
+           'fill="%(c)s" fill-opacity="%(f)s"/></g></svg>'
+           % {'c': c, 'f': '1' if on else '0', 'd': 'none' if on else '2 1.6',
+              'l': '#ffffff' if on else c})
+    pm = QtGui.QPixmap()
+    pm.loadFromData(QtCore.QByteArray(svg.encode()), 'SVG')
+    if not pm.isNull():
+        pm = pm.scaled(36, 36, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+    return QtGui.QIcon(pm)
+
+
 def _now():
     return QtCore.QDateTime.currentMSecsSinceEpoch()
 
@@ -959,8 +1006,13 @@ class _Selection:
         if self._ours():
             return
         QtCore.QTimer.singleShot(0, _panel.update_target)
-        if not Gui.Control.activeDialog():
-            _panel.reveal('Data' if _panel.tab == 'Task' else None)
+        if Gui.Control.activeDialog():
+            return
+        tab = 'Data' if _panel.tab == 'Task' else None
+        if prefs.get('ShowOnSelection') or _panel.mode() == 'Fixed':
+            _panel.reveal(tab)
+        elif tab:                       # stays rolled up / hidden, ready on Data
+            _panel.show_tab(tab)
 
     def _cleared(self, *args):
         if not self._ours():

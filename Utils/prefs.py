@@ -33,6 +33,7 @@ DEFAULTS = {
     # floating properties panel
     'FloatingPanel': False, 'PanelVisibility': 'Fixed', 'PanelBlur': True, 'AutoTask': True,
     'PanelGeometry': '', 'PanelEasing': 'OutQuart', 'PanelAnimMs': 200, 'KeepOpenOnTask': True,
+    'ShowOnSelection': True,
     'QmlProperties': True, 'SectionStyle': 'Flat', 'UserTextureDir': '',
     'DefGridStyle': 'Grid', 'TableRows': True,
     # SpaceMouse (the toolbar toggle and these share their parameter)
