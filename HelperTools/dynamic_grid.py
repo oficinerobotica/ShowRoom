@@ -273,22 +273,34 @@ class ViewProviderDynamicGrid:
         solid = coin.SoDrawStyle()
         solid.lineWidth = 2.0
         ticks.addChild(solid)
+        # The letters are SoImages, drawn with glDrawPixels. With real-time
+        # shadows on, the grid is inside Coin's SoShadowGroup and its shader
+        # program stays bound while they are drawn: the pixels then get the
+        # shader's colour (red, green, whatever was drawn last) or an opaque
+        # black box. As for the sun's gizmo, an empty shader program and
+        # NO_SHADOWING give them their own colours back.
+        letters = coin.SoSeparator()
+        letters.addChild(coin.SoShaderProgram())
+        no_shadow = view_utils.new_node('SoShadowStyle')
+        if no_shadow is not None:
+            view_utils.set_field(no_shadow, 'style', 'NO_SHADOWING')
+            letters.addChild(no_shadow)
+        # never hidden by the ground, never in the depth (nor in the AO pass)
+        depth = coin.SoDepthBuffer()
+        depth.test = False
+        depth.write = False
+        letters.addChild(depth)
         pts = []
         for deg in (0, 90, 180, 270):
             t = math.radians(deg)
             d = (math.sin(t), math.cos(t))
             pts += [(d[0] * half, d[1] * half, 0), (d[0] * half * 1.08, d[1] * half * 1.08, 0)]
             label = coin.SoSeparator()
-            # never hidden by the ground, never in the depth (nor in the AO pass)
-            depth = coin.SoDepthBuffer()
-            depth.test = False
-            depth.write = False
-            label.addChild(depth)
             tr = coin.SoTranslation()
             tr.translation = (d[0] * half * 1.2, d[1] * half * 1.2, 0)
             label.addChild(tr)
             label.addChild(images.make(images.label, 'NESW'[deg // 90], dark=False, size=14))
-            ticks.addChild(label)
+            letters.addChild(label)
         tc = coin.SoCoordinate3()
         tc.point.setValues(0, len(pts), pts)
         tl = coin.SoLineSet()
@@ -296,6 +308,7 @@ class ViewProviderDynamicGrid:
         ticks.insertChild(tc, 1)
         ticks.insertChild(tl, 2)
         group.addChild(ticks)
+        group.addChild(letters)
         lines.addChild(group)
 
     # -------------------------------------------------------------- updates
