@@ -166,7 +166,8 @@ one task panel; changes show right away, OK keeps them, Cancel puts everything b
   sides);
 * **Lines and points**: draw style, line color and width, point color and size;
 * **Texture**: *None*, a gallery of materials (wood, brushed metal, concrete, carbon fibre,
-  plastic grain, checker) or *Your image…* (any PNG or JPG), with the size of one tile and the
+  plastic grain, checker, porcelain tiles, rustic tiles, herringbone parquet, steel grating
+  with see-through openings) or *Your image…* (any PNG or JPG), with the size of one tile and the
   rotation. *Texture size from the object* picks a size for you, *Default look* puts FreeCAD's
   default colors back.
 
