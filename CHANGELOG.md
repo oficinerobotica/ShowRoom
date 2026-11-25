@@ -1,5 +1,29 @@
 # Changelog
 
+## ShowRoom 1.3.0
+
+New
+- SpaceMouse: Rotate around selection, a fourth toggle on the SpaceMouse toolbar. Selecting
+  something slides the view until it is in the middle; the SpaceMouse then rotates around it
+  and only zooms, with no panning, while something is selected. With nothing selected the
+  SpaceMouse works as usual. It sets the rotation mode "Window center" while on and gives
+  the previous one back afterwards.
+- SpaceMouse section in the settings: rotate around the selection, bring the selection to
+  the middle, keep it there (rotate and zoom only), and no rotation while editing a sketch
+  (the rotation lock switches on in a sketch and goes back as it was when it closes).
+- Floating panel: a button between the visibility button and the pin (and the setting
+  Show on selection) chooses whether selecting something opens a rolled-up or autohidden
+  panel, or only the mouse does.
+
+Fixed
+- The SpaceMouse toggles work from a SpaceMouse button (Customize > Spaceball Buttons): each
+  press switches them on or off, and the toolbar button shows the state.
+- Ambient occlusion left out a whole Body when one of its sketches was visible with a
+  Transparency (common in files from older FreeCAD versions): Transparency only counts on
+  objects that draw faces.
+- Compass rose: with real-time shadows on, the N E S W letters took the shadow shader's
+  colour or turned into black boxes.
+
 ## ShowRoom 1.2.0
 
 New
