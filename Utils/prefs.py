@@ -35,6 +35,9 @@ DEFAULTS = {
     'PanelGeometry': '', 'PanelEasing': 'OutQuart', 'PanelAnimMs': 200, 'KeepOpenOnTask': True,
     'QmlProperties': True, 'SectionStyle': 'Flat', 'UserTextureDir': '',
     'DefGridStyle': 'Grid', 'TableRows': True,
+    # SpaceMouse (the toolbar toggle and these share their parameter)
+    'SpaceMouseOrbitSelection': False, 'SpaceMouseCenterSelection': True,
+    'SpaceMouseLockPan': True, 'SpaceMouseSketchNoRotation': False,
     # maintenance
     'WarnDisplayTools': True,
 }

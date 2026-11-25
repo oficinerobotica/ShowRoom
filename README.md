@@ -243,6 +243,22 @@ FreeCAD's built-in SpaceMouse support (the default on Linux). When FreeCAD uses 
 3Dconnexion driver instead (Windows and macOS with the driver installed) the driver handles the
 axes and the locks have no effect.
 
+A fourth toggle, **Rotate around selection**, makes the SpaceMouse rotate the view around the
+centre of what is selected (objects, faces, edges or vertices; with nothing selected the view
+rotates as usual). Selecting something slides the view until the selection is in its middle,
+and it stays there: the SpaceMouse then only rotates and zooms (its sideways and up/down axes
+are switched off in *Spaceball Motion* while something is selected, and back on otherwise).
+Panning with the mouse still works; the next SpaceMouse move brings the selection back.
+It needs FreeCAD's rotation mode *Window center* (Preferences > Display > Navigation): the
+toggle sets it while on and gives the previous mode back when switched off. Same limit as the
+locks: with the official 3Dconnexion driver use the driver's own "rotate around selection"
+setting instead.
+
+*ShowRoom settings > SpaceMouse* has the options: rotate around the selection (the same as the
+button), bring the selection to the middle of the view, keep it there (rotate and zoom only),
+and **no rotation while editing a sketch**: the rotation lock switches on when a sketch opens
+and goes back as it was when it closes; panning and zooming keep working.
+
 ### Task panels
 
 Every object of the workbench is edited in the task panel, as in Part Design: **double click**

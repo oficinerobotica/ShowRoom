@@ -340,6 +340,19 @@ def icon_spnav_horizon():
     return out
 
 
+def icon_spnav_orbit_selection():
+    out = backdrop(axes=False, grid=False)
+    out += puck(52, 72, 0.8)
+    # an orbit around the selected object (FreeCAD's selection green): back half
+    # behind it, front half with the arrow head in front, the pivot on top
+    out += arrow_arc(52, 34, 38, 12, 185, 355, '#0a6fd6', 3.2, head=False)
+    out += cube(52, 36, 14, 17, faces=('#1a8f1a', '#3fc43f', '#a8eca8'))
+    out += arrow_arc(52, 34, 38, 12, 5, 165, '#0a6fd6', 3.2)
+    out += ['<circle cx="52" cy="29.5" r="3" fill="#f2a52b" stroke="#1f1f1f" stroke-width="1"/>']
+    out += close_backdrop()
+    return out
+
+
 def icon_settings():
     out = backdrop(axes=False)
     out += ['<ellipse cx="52" cy="88" rx="30" ry="7" fill="#000" opacity="0.3" filter="url(#blur)"/>']
@@ -384,6 +397,7 @@ ICONS = {
     'SpNav.svg': icon_spnav_rot,
     'SpNav_LockTrans.svg': icon_spnav_trans,
     'SpNav_LockHor.svg': icon_spnav_horizon,
+    'SpNav_OrbitSel.svg': icon_spnav_orbit_selection,
     'Settings.svg': icon_settings,
     'FloatingPanel.svg': icon_panel,
 }

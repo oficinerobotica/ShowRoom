@@ -29,6 +29,20 @@ def setLocked(parameter, locked):
     _group().SetBool(parameter, not locked)
 
 
+def sync_button(command_name, state):
+    """Show a state on a command's toolbar button and menu entry: a SpaceMouse
+    button, or ShowRoom itself, runs or changes things without touching them."""
+    try:
+        import FreeCADGui
+        for action in FreeCADGui.Command.get(command_name).getAction():
+            if action.isCheckable() and action.isChecked() != state:
+                blocked = action.blockSignals(True)
+                action.setChecked(state)
+                action.blockSignals(blocked)
+    except Exception:
+        pass
+
+
 def toggle(parameter):
     locked = not isLocked(parameter)
     setLocked(parameter, locked)

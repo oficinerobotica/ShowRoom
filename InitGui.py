@@ -113,7 +113,9 @@ def _startServices():
         pass
     for module, label in (("SceneFX.textures", "textures"), ("dtpanels.overlay", "in-view light panel"),
                           ("SceneFX.autoscene", "automatic scene"),
-                          ("dtpanels.floating", "floating properties panel")):
+                          ("dtpanels.floating", "floating properties panel"),
+                          ("SpaceNav.orbit_selection", "SpaceMouse rotate around selection"),
+                          ("SpaceNav.sketch_lock", "SpaceMouse lock in sketches")):
         try:
             __import__(module, fromlist=["install"]).install()
         except Exception as error:

@@ -940,6 +940,18 @@ class SettingsModel(Model):
             P('PanelBlur', 'Blurred background', 'bool', 'Properties panel'),
             P('AutoTask', 'Autotask: show the Task tab when a task opens', 'bool',
               'Properties panel', tip='Pad, Pocket, sketch editing...'),
+            P('SpaceMouseOrbitSelection', 'Rotate around the selection', 'bool', 'SpaceMouse',
+              tip='Same as the Rotate around selection button. Sets the navigation rotation '
+                  'mode to "Window center" while on'),
+            P('SpaceMouseCenterSelection', 'Bring the selection to the middle of the view',
+              'bool', 'SpaceMouse', tip='When something is selected, with rotate around the '
+              'selection on'),
+            P('SpaceMouseLockPan', 'Keep it in the middle: rotate and zoom only', 'bool',
+              'SpaceMouse', tip='With rotate around the selection on, the sideways and up/down '
+                                'axes are switched off while something is selected'),
+            P('SpaceMouseSketchNoRotation', 'No rotation while editing a sketch', 'bool',
+              'SpaceMouse', tip='Panning and zooming keep working; the rotation lock comes '
+                                'back as it was when the sketch is closed'),
             P('DefTileSize', 'Texture tile size (0 = from the object)', 'number', 'Textures',
               min=0, max=200, step=1, unit='mm', decimals=0, hardMin=0),
             P('UserTextureDir', 'Your texture folder', 'text', 'Textures', button='Choose…',
@@ -1018,6 +1030,14 @@ class SettingsModel(Model):
             floating.apply_prefs()
         except Exception as error:
             App.Console.PrintWarning("ShowRoom: floating panel: %s\n" % error)
+        try:
+            from SpaceNav import orbit_selection, sketch_lock, spacenav_commands
+            orbit_selection.apply_prefs()
+            sketch_lock.apply_prefs()
+            spacenav_commands.sync_button('ShowRoom_SpaceNavOrbitSelection',
+                                          orbit_selection.isOn())
+        except Exception as error:
+            App.Console.PrintWarning("ShowRoom: SpaceMouse: %s\n" % error)
         if self.values['LoadAtStartup'] or self.values['AutoScene'] or self.values['AutoSceneOnOpen']:
             from SceneFX import autoscene
             autoscene.install()

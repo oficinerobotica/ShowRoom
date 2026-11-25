@@ -20,6 +20,7 @@ ICONS = {
     '3D view': 'M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12zM12 9.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
     'Panels': 'M4 4h16v16H4zM4 9h16M9 9v11',
     'Properties panel': 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4',
+    'SpaceMouse': 'M8 10h8l1 7H7zM9 10a3 2 0 0 1 6 0M5 19h14',
     'Textures': 'M4 4h7v7H4zM13 13h7v7h-7zM13 4h7v7h-7zM4 13h7v7H4z',
     'Maintenance': 'M14.5 5.5a4 4 0 0 0-5 5L4 16v4h4l5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z',
 }
@@ -30,6 +31,7 @@ HINTS = {
     '3D view': 'Gizmos and navigation',
     'Panels': 'How the ShowRoom panels look',
     'Properties panel': 'The floating Data / View / Task panel',
+    'SpaceMouse': 'Rotate around the selection, sketches',
     'Textures': 'Images on shapes',
     'Maintenance': 'Export, factory defaults',
 }

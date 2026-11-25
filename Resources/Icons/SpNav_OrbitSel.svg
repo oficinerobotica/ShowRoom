@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<!-- Copyright (c) 2026 OficineRobotica - ShowRoom add-on for FreeCAD -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 105.83333 105.83333">
+<defs>
+  <linearGradient id="bg" x1="105.83" y1="0" x2="0" y2="105.83" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#231c39"/><stop offset="1" stop-color="#f9f7ff" stop-opacity="0.75"/>
+  </linearGradient>
+  <linearGradient id="floor" x1="55.45" y1="55.08" x2="42.48" y2="97.14" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#545454"/><stop offset="1" stop-color="#969696" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#fff1d4" stop-opacity="0.95"/><stop offset="1" stop-color="#ffeabe" stop-opacity="0.35"/>
+  </linearGradient>
+  <radialGradient id="sun" cx="0.4" cy="0.35" r="0.7">
+    <stop offset="0" stop-color="#fff6c8"/><stop offset="0.6" stop-color="#ffd24a"/><stop offset="1" stop-color="#e89a12"/>
+  </radialGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#8d8d8d"/><stop offset="0.45" stop-color="#f2f2f2"/><stop offset="1" stop-color="#7a7a7a"/>
+  </linearGradient>
+  <linearGradient id="cap" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#1b1b1b"/><stop offset="0.4" stop-color="#5a5a5a"/><stop offset="1" stop-color="#151515"/>
+  </linearGradient>
+  <pattern id="wood" width="9" height="6" patternUnits="userSpaceOnUse" patternTransform="skewY(-25)">
+    <rect width="9" height="6" fill="#c9965a"/><path d="M0 6 H9 M4.5 0 V6" stroke="#7e5026" stroke-width="0.9"/>
+  </pattern>
+  <filter id="blur" x="-0.3" y="-0.3" width="1.6" height="1.6"><feGaussianBlur stdDeviation="1.8"/></filter>
+  <filter id="soft" x="-0.3" y="-0.3" width="1.6" height="1.6"><feGaussianBlur stdDeviation="3.2"/></filter>
+  <clipPath id="tile"><path d="m 13.99,0.52 c -4.28,0 -13.47,8.95 -13.47,13.23 l 0,76.49 c 0,4.28 8.05,15.07 15.15,15.07 H 91.55 c 4.28,0 13.76,-8.42 13.76,-14.2 l 0,-78.21 c 0,-4.28 -7.79,-12.37 -12.07,-12.37 z"/></clipPath>
+</defs>
+<path d="m 13.99,0.52 c -4.28,0 -13.47,8.95 -13.47,13.23 l 0,76.49 c 0,4.28 8.05,15.07 15.15,15.07 H 91.55 c 4.28,0 13.76,-8.42 13.76,-14.2 l 0,-78.21 c 0,-4.28 -7.79,-12.37 -12.07,-12.37 z" fill="url(#bg)" stroke="#ffffff" stroke-width="1.05"/>
+<g clip-path="url(#tile)">
+<ellipse cx="52" cy="92" rx="26.4" ry="7.2" fill="#000" opacity="0.35" filter="url(#blur)"/>
+<path d="M 28,83.2 L 28,87.2 A 24 6.4 0 0 0 76,87.2 L 76,83.2 Z" fill="url(#metal)" stroke="#000" stroke-width="0.5"/>
+<ellipse cx="52" cy="83.2" rx="24" ry="6.4" fill="#d9d9d9" stroke="#000" stroke-width="0.5" />
+<path d="M 39.2,64 L 35.2,81.6 A 16.8 4.8 0 0 0 68.8,81.6 L 64.8,64 Z" fill="url(#cap)" stroke="#000" stroke-width="0.5"/>
+<ellipse cx="52" cy="64" rx="12.8" ry="3.68" fill="#4a4a4a" stroke="#000" stroke-width="0.5" />
+<ellipse cx="48.8" cy="63.2" rx="6.4" ry="1.44" fill="#ffffff" opacity="0.25"/>
+<path d="M 14.1446,32.9541 14.8419,31.488 16.1064,30.0602 17.9188,28.6925 20.2515,27.4059 23.0687,26.2199 26.3276,25.1527 29.9783,24.2205 33.9652,23.4376 38.2274,22.8159 42.6998,22.3649 47.3141,22.0916 52,22 56.6859,22.0916 61.3002,22.3649 65.7726,22.8159 70.0348,23.4376 74.0217,24.2205 77.6724,25.1527 80.9313,26.2199 83.7485,27.4059 86.0812,28.6925 87.8936,30.0602 89.1581,31.488 89.8554,32.9541" fill="none" stroke="#0b2a55" stroke-width="4.8" stroke-linecap="round"/>
+<path d="M 14.1446,32.9541 14.8419,31.488 16.1064,30.0602 17.9188,28.6925 20.2515,27.4059 23.0687,26.2199 26.3276,25.1527 29.9783,24.2205 33.9652,23.4376 38.2274,22.8159 42.6998,22.3649 47.3141,22.0916 52,22 56.6859,22.0916 61.3002,22.3649 65.7726,22.8159 70.0348,23.4376 74.0217,24.2205 77.6724,25.1527 80.9313,26.2199 83.7485,27.4059 86.0812,28.6925 87.8936,30.0602 89.1581,31.488 89.8554,32.9541" fill="none" stroke="#0a6fd6" stroke-width="3.2" stroke-linecap="round"/>
+<path d="M 52,36 38,29.472 38,46.472 52,53 Z" fill="#1a8f1a" stroke="#000" stroke-width="0.4" stroke-linejoin="round"/>
+<path d="M 52,36 66,29.472 66,46.472 52,53 Z" fill="#3fc43f" stroke="#000" stroke-width="0.4" stroke-linejoin="round"/>
+<path d="M 52,36 38,29.472 52,22.944 66,29.472 Z" fill="#a8eca8" stroke="#000" stroke-width="0.4" stroke-linejoin="round"/>
+<path d="M 89.8554,35.0459 89.2149,36.4266 88.0712,37.7745 86.4397,39.0714 84.3424,40.2997 81.8078,41.4428 78.8701,42.4853 75.5689,43.413 71.9491,44.2134 68.0595,44.8757 63.9527,45.3909 59.6843,45.7521 55.3119,45.9543 50.8948,45.9949 46.4926,45.8733 42.1649,45.5911 37.9702,45.1522 33.9652,44.5624 30.2041,43.8298 26.7378,42.9643 23.613,41.9776 20.8722,40.8829 18.5523,39.6952 16.6848,38.4305 15.2948,37.1058" fill="none" stroke="#0b2a55" stroke-width="4.8" stroke-linecap="round"/>
+<path d="M 89.8554,35.0459 89.2149,36.4266 88.0712,37.7745 86.4397,39.0714 84.3424,40.2997 81.8078,41.4428 78.8701,42.4853 75.5689,43.413 71.9491,44.2134 68.0595,44.8757 63.9527,45.3909 59.6843,45.7521 55.3119,45.9543 50.8948,45.9949 46.4926,45.8733 42.1649,45.5911 37.9702,45.1522 33.9652,44.5624 30.2041,43.8298 26.7378,42.9643 23.613,41.9776 20.8722,40.8829 18.5523,39.6952 16.6848,38.4305 15.2948,37.1058" fill="none" stroke="#0a6fd6" stroke-width="3.2" stroke-linecap="round"/>
+<path d="M 12.0372,34.0013 20.916,35.5559 14.0171,42.7951 Z" fill="#0a6fd6" stroke="#0b2a55" stroke-width="0.8" stroke-linejoin="round"/>
+<circle cx="52" cy="29.5" r="3" fill="#f2a52b" stroke="#1f1f1f" stroke-width="1"/>
+</g>
+<rect x="0.98" y="0.98" width="103.87" height="103.87" ry="14.3" fill="none" stroke="#444444" stroke-width="1.96"/>
+</svg>

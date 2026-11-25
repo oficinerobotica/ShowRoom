@@ -3,10 +3,24 @@
 import FreeCAD
 
 from Utils.resource_utils import iconPath
-from SpaceNav import spacenav_commands
+from SpaceNav import orbit_selection, sketch_lock, spacenav_commands
 
 TOOLBAR = 'ShowRoom SpaceMouse'
 NOTE = "\n(Built-in SpaceMouse support only; ignored when the 3Dconnexion driver is in control)"
+
+
+def _wanted_state(checked, current):
+    """New state of a toggle, whoever triggered it.
+
+    A click on the toolbar button passes the button's new state, which
+    differs from the current one.  A SpaceMouse button (Customize > Spaceball
+    Buttons) runs the command with 1 every time, and so does a shortcut on
+    some FreeCAD versions: when what is passed is the current state already,
+    it is a request to toggle.
+    """
+    if checked is None or bool(checked) == bool(current):
+        return not current
+    return bool(checked)
 
 
 class _LockCommand:
@@ -16,11 +30,9 @@ class _LockCommand:
     what = ""
 
     def Activated(self, checked=None):
-        if checked is None:
-            locked = spacenav_commands.toggle(self.parameter)
-        else:
-            locked = bool(checked)
-            spacenav_commands.setLocked(self.parameter, locked)
+        locked = _wanted_state(checked, spacenav_commands.isLocked(self.parameter))
+        spacenav_commands.setLocked(self.parameter, locked)
+        spacenav_commands.sync_button(self.commandName, locked)
         FreeCAD.Console.PrintLog("ShowRoom: SpaceMouse %s %s\n"
                                  % (self.what, "locked" if locked else "unlocked"))
 
@@ -63,7 +75,36 @@ class SpToolsLockHorizon(_LockCommand):
                               'SpNav_LockHor.svg')
 
 
+class SpToolsOrbitSelection:
+    """Checkable command: checked = the SpaceMouse rotates around the selection."""
+    toolbarName = TOOLBAR
+    commandName = 'ShowRoom_SpaceNavOrbitSelection'
+
+    def GetResources(self):
+        return {'MenuText': "Rotate around selection",
+                'ToolTip': "The SpaceMouse rotates the view around the centre of the selected "
+                           "objects or faces (nothing selected: as usual); selecting\n"
+                           "something brings it to the middle of the view and keeps it there\n"
+                           "(rotation and zoom only while something is selected).\n"
+                           "Sets the navigation rotation mode to \"Window center\" while on" + NOTE,
+                'Pixmap': iconPath('SpNav_OrbitSel.svg'),
+                'Checkable': orbit_selection.isOn()}
+
+    def Activated(self, checked=None):
+        on = _wanted_state(checked, orbit_selection.isOn())
+        orbit_selection.setOn(on)
+        spacenav_commands.sync_button(self.commandName, on)
+        FreeCAD.Console.PrintLog("ShowRoom: SpaceMouse rotate around selection %s\n"
+                                 % ("on" if on else "off"))
+
+    def IsActive(self):
+        return True
+
+
 import showroom_toolbars     # noqa: E402
 showroom_toolbars.toolbarManager.registerCommand(SpToolsLockRot())
 showroom_toolbars.toolbarManager.registerCommand(SpToolsLockTrans())
 showroom_toolbars.toolbarManager.registerCommand(SpToolsLockHorizon())
+showroom_toolbars.toolbarManager.registerCommand(SpToolsOrbitSelection())
+orbit_selection.install()    # the option may have been left on (no-op if already running)
+sketch_lock.install()
