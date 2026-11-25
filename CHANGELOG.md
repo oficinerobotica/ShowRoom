@@ -14,7 +14,7 @@ New
   icon for the kind of each property, lines between rows, the row under the mouse lit,
   short choices as segmented controls, links as chips, expressions as violet pills,
   read-only values with a lock, sections with their count and how many were edited.
-- Appearance in the Data tab (colour, shininess, transparency); for a feature inside a Body
+- Appearance in the Data tab (colour, transparency); for a feature inside a Body
   it edits the Body, which is what is shown.
 - Panel visibility: fixed, rolled up (opens on hover) or autohide (slides to the nearer
   screen edge, comes back on touching it, on a selection or when a task opens), with
@@ -33,6 +33,11 @@ New
 - Your own texture folder (Settings, Textures), shown in the gallery after the bundled ones.
 - Sliders redrawn (thicker track, ringed thumb); they follow the mouse at once and a drag
   is a single undo step.
+- Right click on a row of the Data / View editor (type icon included) opens FreeCAD's own
+  menu for that property: Copy, Add Property, Rename / Delete, Property Uses, Show Hidden,
+  Status. Expression opens ShowRoom's expression editor (Data properties); with Show Hidden
+  the hidden properties are listed too, read-only.
+- Shape Material: Edit opens FreeCAD's material dialog.
 
 Fixed
 - Windows: QML panels were empty (Qt Quick now draws with OpenGL, widget panels otherwise).
@@ -46,6 +51,12 @@ Fixed
 - The light panel no longer covers the floating panel; rounded corners without square
   edges; the dynamic grid is left out of the thumbnail saved in the file.
 - Choice rows with fewer labels than values (files from older versions).
+- The Data / View editor lists exactly the rows of FreeCAD's own property editor: no
+  duplicates and nothing FreeCAD does not show (Line / Point Color Array, line and point
+  shininess, a second Line color in the View tab; Shape in the Data tab). In the Data tab
+  the appearance row keeps only the colour: shininess stays in the View tab.
+- Edit opened FreeCAD's editor on the wrong property (Point Color Array showed Point Size):
+  FreeCAD's row is now found by the property's real name, also with FreeCAD translated.
 
 Internal
 - The sketch / feature-panel pauses of the effects are gathered in SceneFX/pauses.py.
@@ -126,13 +137,13 @@ Changed
 
 # Display Tools (previous name)
 
-## 1.7.1
+## Display Tools 1.7.1
 
 Fixed
 - The sun icon jumped the first time it was clicked: its circle around the model was only
   measured on selection. It now follows the model (recompute, show/hide, undo, opening).
 
-## 1.7.0
+## Display Tools 1.7.0
 
 New
 - *Appearance…* replaces *Texture…* and *Remove texture*: one task panel for color,
@@ -145,7 +156,7 @@ Fixed
   new image under the old file name).
 - *Remove texture* closed the panel, and reopening it laid the default wood again.
 
-## 1.6.0
+## Display Tools 1.6.0
 
 New
 - Light gizmos replace Coin's manipulators: constant-size icons, and when a light is selected,
@@ -159,7 +170,7 @@ New
 Changed
 - `Scale` and `GizmoPosition` are no longer used and are hidden in old files.
 
-## 1.5.0
+## Display Tools 1.5.0
 
 New
 - QML task panels for lights, dynamic grid, display effects and textures, opened by double
@@ -172,14 +183,14 @@ Fixed
   message.
 - Texture gallery: the chosen image is recognised although FreeCAD renames the copy it keeps.
 
-## 1.4.0
+## Display Tools 1.4.0
 
 New
 - Textures: an image per object, box projected (`TextureImage`, `TextureScale`,
   `TextureRotation`), stored in the document. Six tileable materials included.
   Hovered and selected faces are highlighted over the image, in FreeCAD's own colors.
 
-## 1.3.0
+## Display Tools 1.3.0
 
 New
 - Light rigs: three-point, studio, sun. `Azimuth` / `Elevation` on directional lights.
@@ -193,13 +204,13 @@ Fixed
   (blocky ones), and through the code path that could crash FreeCAD: Coin turns every light
   found inside its shadow group into a shadow caster. They are now kept outside of it.
 
-## 1.2.0
+## Display Tools 1.2.0
 
 New
 - Effects are paused while the view is navigated (`WhileNavigating`,
   `NavigationResumeDelay` on the scene configuration).
 
-## 1.1.0
+## Display Tools 1.1.0
 
 Compatibility
 - Works on FreeCAD 26.3. There `getSceneGraph()` returns a new root node, with the view's
