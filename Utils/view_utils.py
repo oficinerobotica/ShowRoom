@@ -236,6 +236,37 @@ def helper_roots(doc):
     return roots
 
 
+# Display modes that draw no faces: Transparency has no effect on them.
+_FACELESS_MODES = ('Wireframe', 'Points')
+
+
+def _shows_faces(obj, vo):
+    """``obj`` draws faces, the only thing its Transparency acts on.
+
+    A sketch (or any wire, or an object shown as wireframe / points) can carry a
+    Transparency left over from an old file: it changes nothing on screen, so it
+    must not take its Body out of the ambient occlusion."""
+    if getattr(vo, 'DisplayMode', '') in _FACELESS_MODES:
+        return False
+    try:
+        if obj.isDerivedFrom('Sketcher::SketchObject'):
+            return False
+    except Exception:
+        pass
+    shape = getattr(obj, 'Shape', None)
+    if shape is None:
+        return True                     # meshes, points...: keep the old rule
+    try:
+        if shape.isNull():
+            return False
+        try:
+            return shape.countElement('Face') > 0
+        except Exception:
+            return len(shape.Faces) > 0
+    except Exception:
+        return True
+
+
 def _see_through(obj, depth=0):
     """``obj`` is shown transparent, or holds something visible that is (a Body
     whose tip, a Part with a glass pane...)."""
@@ -243,7 +274,7 @@ def _see_through(obj, depth=0):
         vo = obj.ViewObject
         if vo is None or not vo.Visibility:
             return False
-        if getattr(vo, 'Transparency', 0) > 0:
+        if getattr(vo, 'Transparency', 0) > 0 and _shows_faces(obj, vo):
             return True
     except Exception:
         return False
