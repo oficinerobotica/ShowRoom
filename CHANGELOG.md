@@ -1,5 +1,12 @@
 # Changelog
 
+## ShowRoom 1.3.1
+
+Fixed
+- SpaceMouse, rotate around selection: with an orthographic view the selection was often
+  not brought to the middle and panning was not locked until the first SpaceMouse move
+  (FreeCAD leaves the orthographic camera level with the model or past it).
+
 ## ShowRoom 1.3.0
 
 New
