@@ -48,6 +48,7 @@ MOTION_PREFS = "User parameter:BaseApp/Spaceball/Motion"
 ALL_AXES = ("PanLREnable", "PanUDEnable", "ZoomEnable")
 SAVED_PREFIX = "SpaceMouseOrbitPrevious"
 MIN_DEPTH = 1.0                 # mm: closest the camera gets to the selection
+ORTHO_DEPTH = 100.0             # mm: least distance kept in front of it, orthographic view
 CENTER_MS = 250                 # how long the view takes to centre the selection
 
 _service = None
@@ -245,6 +246,23 @@ class _SelectionObserver:
         self.service.selection_changed()
 
 
+def _orthographic(camera):
+    return camera.isOfType(coin.SoOrthographicCamera.getClassTypeId())
+
+
+def _usable_depth(camera, depth):
+    """Distance from the camera to the selection, along the view, to work with.
+
+    An orthographic camera looks the same from any distance, and FreeCAD
+    often leaves it level with the model or even past it (negative depth):
+    it is simply stepped back.  A perspective camera keeps its distance, as
+    that is its zoom; it only stops just short of the selection.
+    """
+    if _orthographic(camera):
+        return max(depth, camera.focalDistance.getValue(), ORTHO_DEPTH)
+    return max(depth, MIN_DEPTH)
+
+
 def _pose(camera):
     return (coin.SbVec3f(*camera.position.getValue().getValue()),
             coin.SbRotation(*camera.orientation.getValue().getValue()),
@@ -358,11 +376,13 @@ class _Service:
         direction = camera.orientation.getValue().multVec(coin.SbVec3f(0, 0, -1))
         to_pivot = pivot - camera.position.getValue()
         depth = to_pivot.dot(direction)
-        if depth < MIN_DEPTH:
+        if depth < MIN_DEPTH and not _orthographic(camera):
             return          # behind the camera or too close: leave the view alone
-        self._move(camera, None, depth)
-        # the sideways part only: the distance to the model does not change
-        self.slide = (camera, to_pivot - direction * depth, 0.0)
+        shift = to_pivot - direction * depth    # the sideways part only
+        usable = _usable_depth(camera, depth)
+        # an orthographic camera level with or past the selection steps back
+        self._move(camera, camera.position.getValue() - direction * (usable - depth), usable)
+        self.slide = (camera, shift, 0.0)
         self.slide_clock.restart()
         self.slide_timer.start()
 
@@ -431,10 +451,10 @@ class _Service:
         direction = r1.multVec(coin.SbVec3f(0, 0, -1))
         depth = (pivot - new_position).dot(direction)
         if not locks_pan():
-            self._move(camera, new_position, depth if depth > MIN_DEPTH else None)
+            usable = _usable_depth(camera, depth)
+            self._move(camera, new_position - direction * (usable - depth), usable)
             return
-        if depth < MIN_DEPTH:
-            depth = MIN_DEPTH   # zooming in stops just short of the selection
+        depth = _usable_depth(camera, depth)
         # no sideways or up/down movement: the selection stays in the middle of
         # the view, only the distance to it (the zoom) is left to the SpaceMouse
         self._move(camera, pivot - direction * depth, depth)
